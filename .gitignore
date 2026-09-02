@@ -1,0 +1,6 @@
+target/
+*.iml
+.idea/workspace.xml
+.idea/shelf/
+.idea/httpRequests/
+.DS_Store
