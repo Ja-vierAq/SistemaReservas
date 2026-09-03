@@ -1,10 +1,16 @@
 package reservas.logic;
+import jakarta.xml.bind.annotation.XmlAccessType;
+import jakarta.xml.bind.annotation.XmlAccessorType;
+import jakarta.xml.bind.annotation.XmlID;
+import jakarta.xml.bind.annotation.XmlIDREF;
+@XmlAccessorType(XmlAccessType.FIELD)
 
 public class Funcionario {
-
+    @XmlID
     private String id;
     private String nombre;
     private String telefono;
+    @XmlIDREF
     private Usuario usuario;
 
     public Funcionario() {}
