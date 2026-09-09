@@ -1,4 +1,4 @@
-package reservas.presention;
+package reservas.presentation;
 
 import java.awt.*;
 import java.awt.event.MouseAdapter;
