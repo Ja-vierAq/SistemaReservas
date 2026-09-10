@@ -10,4 +10,8 @@ public class View {
     private JButton calImprimirFld;
     private JTable calendarizacionTbl;
     private JPanel panel;
+
+    public JPanel getPanel() {
+        return panel;
+    }
 }

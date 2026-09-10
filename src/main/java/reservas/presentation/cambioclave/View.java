@@ -9,4 +9,8 @@ public class View {
     private JButton ccAceptarFld;
     private JButton ccCancelarFld;
     private JPanel panel;
+
+    public JPanel getPanel() {
+        return panel;
+    }
 }

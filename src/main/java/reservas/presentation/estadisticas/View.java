@@ -14,4 +14,8 @@ public class View {
     private JTable estadisticasActividadesTbl;
     private JPanel graficoActividadesPnl;
     private JPanel panel;
+
+    public JPanel getPanel() {
+        return panel;
+    }
 }

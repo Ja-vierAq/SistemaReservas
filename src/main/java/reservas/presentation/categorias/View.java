@@ -13,4 +13,8 @@ public class View {
     private JButton catLimpiarFld;
     private JTable categoriasTbl;
     private JPanel panel;
+
+    public JPanel getPanel() {
+        return panel;
+    }
 }

@@ -15,4 +15,7 @@ public class View {
     private JButton recLimpiarFld;
     private JTable recursosTbl;
     private JPanel panel;
+    public JPanel getPanel() {
+        return panel;
+    }
 }

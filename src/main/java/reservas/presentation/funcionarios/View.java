@@ -15,4 +15,8 @@ public class View {
     private JButton funLimpiarFld;
     private JTable funcionariosTbl;
     private JPanel panel;
+
+    public JPanel getPanel() {
+        return panel;
+    }
 }
