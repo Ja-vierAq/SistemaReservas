@@ -27,4 +27,8 @@ public class Controller {
     public void cancelar() {
         view.dispose();
     }
+
+    public void cambiarClave(String clave) throws Exception {
+        //logica de activar el cambiar la clave
+    }
 }

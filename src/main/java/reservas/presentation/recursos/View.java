@@ -15,6 +15,17 @@ public class View {
     private JButton recLimpiarFld;
     private JTable recursosTbl;
     private JPanel panel;
+    private Controller controller;
+    private Model model;
+
+    public void setController(Controller controller) {
+        this.controller = controller;
+    }
+
+    public void setModel(Model model) {
+        this.model = model;
+    }
+
     public JPanel getPanel() {
         return panel;
     }

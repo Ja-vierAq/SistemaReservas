@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<data>
+    <usuarios>
+        <usuario>
+            <id>USR001</id>
+            <clave>001</clave>
+            <rol>FUNCIONARIO</rol>
+        </usuario>
+        <usuario>
+            <id>ADM001</id>
+            <clave>001</clave>
+            <rol>ADMIN</rol>
+        </usuario>
+    </usuarios>
+    <funcionarios>
+        <funcionario>
+            <id>FUN001</id>
+            <nombre>Juan Perez</nombre>
+            <telefono>88888888</telefono>
+            <usuario>USR001</usuario>
+        </funcionario>
+    </funcionarios>
+    <categorias>
+        <categoria>
+            <id>CAT001</id>
+            <descripcion>Laptop Windows 11</descripcion>
+        </categoria>
+    </categorias>
+    <recursos>
+        <recurso>
+            <id>REC001</id>
+            <categoria>CAT001</categoria>
+            <descripcion>Laptop #238715</descripcion>
+        </recurso>
+    </recursos>
+    <reservas>
+        <reserva>
+            <id>RES001</id>
+            <funcionario>FUN001</funcionario>
+            <actividad>Reunión de trabajo</actividad>
+            <estado>ACTIVA</estado>
+            <fecha>2026-09-10</fecha>
+            <horaInicio>08:00</horaInicio>
+            <horaFin>10:00</horaFin>
+            <categorias>
+                <categoria>CAT001</categoria>
+            </categorias>
+            <recursos>
+                <recurso>REC001</recurso>
+            </recursos>
+        </reserva>
+    </reservas>
+</data>

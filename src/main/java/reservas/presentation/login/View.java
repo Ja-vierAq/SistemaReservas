@@ -3,6 +3,8 @@ package reservas.presentation.login;
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 public class View extends JDialog {
 
@@ -41,6 +43,12 @@ public class View extends JDialog {
         });
         pack();
         setLocationRelativeTo(null);
+        loginCambiarFld.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                //accion de cambiar clave
+            }
+        });
     }
 
     private void login() {
