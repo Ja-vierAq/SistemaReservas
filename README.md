@@ -4,7 +4,7 @@ Sistema de escritorio desarrollado en **Java** para la administración, calendar
 
 La aplicación permite gestionar funcionarios, categorías y recursos, realizar reservas según disponibilidad, consultar actividades calendarizadas, visualizar estadísticas mediante gráficos y generar reportes en formato PDF. Además, cuenta con persistencia de datos en XML para conservar la información entre ejecuciones.
 
-Proyecto desarrollado para el curso **EIF206 – Programación 3** de la **Universidad Nacional de Costa Rica**.
+Proyecto desarrollado para el curso **EIF206 - Programación 3** de la **Universidad Nacional de Costa Rica**.
 
 ---
 
@@ -12,7 +12,7 @@ Proyecto desarrollado para el curso **EIF206 – Programación 3** de la **Unive
 
 El **Sistema de Reserva de Recursos** tiene como objetivo facilitar la administración y utilización de recursos compartidos dentro de una organización.
 
-Los funcionarios pueden crear reservas indicando una actividad, fecha, horario y las categorías de recursos necesarias. El sistema se encarga de comprobar la disponibilidad y asignar automáticamente un recurso disponible de cada categoría seleccionada.
+Los funcionarios pueden crear reservas indicando una actividad, fecha, horario y las categorías de recursos necesarias. El sistema comprueba la disponibilidad y asigna automáticamente el primer recurso disponible de cada categoría seleccionada.
 
 Los administradores disponen de herramientas adicionales para gestionar funcionarios, categorías y recursos, además de consultar la calendarización y las estadísticas generales del sistema.
 
@@ -30,11 +30,11 @@ El sistema cuenta con autenticación y control de acceso según el tipo de usuar
 * Validación de credenciales.
 * Manejo de roles:
 
-  * 👨‍💼 Administrador.
-  * 👨‍💻 Funcionario.
+  * Administrador.
+  * Funcionario.
 * Cambio de contraseña.
 * Cierre de sesión.
-* Persistencia de los cambios realizados antes de finalizar la aplicación.
+* Persistencia de los cambios antes de finalizar la aplicación.
 
 ---
 
@@ -44,24 +44,111 @@ Los funcionarios pueden administrar sus propias reservas.
 
 * Crear nuevas reservas.
 * Ingresar el nombre o descripción de una actividad.
-* Seleccionar fecha.
-* Seleccionar hora de inicio y finalización.
+* Seleccionar una fecha.
+* Seleccionar la hora de inicio y finalización.
 * Seleccionar una o varias categorías de recursos.
-* Validar los datos antes de enviarlos a la lógica del sistema.
+* Validar los datos antes de enviarlos a la lógica.
 * Comprobar disponibilidad según fecha y horario.
-* Asignar automáticamente el primer recurso disponible de cada categoría.
+* Asignar automáticamente el primer recurso disponible.
 * Detectar conflictos de horario.
-* Informar cuando una categoría no posee disponibilidad.
+* Informar cuáles categorías no tienen disponibilidad.
 * Consultar reservas existentes.
 * Cancelar reservas futuras.
 
-Cada reserva queda asociada al funcionario que la realizó.
+Cada reserva queda asociada con el funcionario que la realizó.
+
+---
+
+## 🤖 Creación de reservas con Inteligencia Artificial
+
+El sistema permite completar automáticamente el formulario de una reserva mediante una frase escrita en lenguaje natural.
+
+Por ejemplo, el funcionario puede escribir:
+
+```text
+Necesito una laptop Windows 11 y un proyector para una reunión
+el 25 de septiembre de 2026, desde las 9:00 hasta las 11:00.
+```
+
+Al presionar el botón **Extraer IA**, el sistema analiza la frase y obtiene los siguientes datos:
+
+* Nombre o descripción de la actividad.
+* Fecha de la reserva.
+* Hora de inicio.
+* Hora de finalización.
+* Categorías de recursos solicitadas.
+
+Los datos extraídos se colocan automáticamente en los campos del formulario. Después, el funcionario puede revisarlos, modificarlos o completarlos antes de registrar la reserva.
+
+La Inteligencia Artificial solamente completa el formulario. La reserva no se guarda automáticamente y debe pasar por las mismas validaciones de una reserva creada manualmente.
+
+### Flujo de la Inteligencia Artificial
+
+```text
+Frase escrita por el usuario
+            ↓
+           View
+            ↓
+        Controller
+            ↓
+     Service.extractIA()
+            ↓
+       LangChain4j
+            ↓
+      GPT-4o mini
+            ↓
+   ReservaExtraccion
+            ↓
+       ReservaIA
+            ↓
+Formulario completado
+            ↓
+Revisión del funcionario
+            ↓
+Registro de la reserva
+```
+
+### Clases utilizadas
+
+| Clase                     | Responsabilidad                                                                                    |
+| ------------------------- | -------------------------------------------------------------------------------------------------- |
+| `ReservaExtractorService` | Contiene las instrucciones que debe seguir el modelo de lenguaje para analizar la frase.           |
+| `ReservaExtraccion`       | Recibe la respuesta estructurada producida por la Inteligencia Artificial.                         |
+| `ReservaIA`               | Almacena los datos convertidos a tipos utilizados por el programa, como `LocalDate` y `LocalTime`. |
+| `Service.extractIA()`     | Envía la frase al modelo, procesa la respuesta y valida los datos obtenidos.                       |
+| `Controller.extractIA()`  | Busca las categorías extraídas y actualiza el modelo de la pantalla de reservas.                   |
+| `View` de reservas        | Obtiene la frase del usuario y muestra los datos generados en el formulario.                       |
+
+### Reglas de extracción
+
+El modelo de lenguaje debe cumplir las siguientes reglas:
+
+* Las fechas deben utilizar el formato `AAAA-MM-DD`.
+* Las horas deben utilizar el formato de 24 horas `HH:mm`.
+* Solo puede seleccionar categorías existentes en el sistema.
+* No puede inventar categorías de recursos.
+* Si un dato no está presente y no puede determinarse, debe devolverlo como nulo.
+* Puede interpretar expresiones como “mañana”, “el viernes” o “la próxima semana” utilizando la fecha actual como referencia.
+
+### Tecnologías utilizadas para la IA
+
+La funcionalidad utiliza:
+
+* LangChain4j 0.36.0.
+* GPT-4o mini.
+* Respuestas estructuradas.
+* Conversión de texto a objetos Java.
+* `LocalDate` y `LocalTime` para fechas y horarios.
+
+Actualmente, el modelo está configurado mediante el endpoint de demostración incluido en el proyecto.
+
+> La función de Inteligencia Artificial requiere conexión a Internet. Si el servicio no está disponible, la reserva todavía puede completarse manualmente.
 
 ---
 
 ## 👥 Gestión de funcionarios
 
-Funcionalidad disponible para administradores.
+Esta funcionalidad se encuentra disponible para administradores.
 
 Permite:
 
@@ -69,21 +156,23 @@ Permite:
 * Consultar funcionarios registrados.
 * Modificar información.
 * Eliminar funcionarios.
-* Buscar funcionarios.
-* Registrar información como:
+* Buscar funcionarios por ID o nombre.
+* Registrar:
 
   * ID.
   * Nombre.
   * Teléfono.
-  * Contraseña.
+  * Usuario y contraseña.
 
-La información se presenta utilizando `JTable` y `TableModel`.
+Cuando se registra un nuevo funcionario, el sistema genera un usuario asociado cuya contraseña inicial es igual al ID del funcionario.
+
+La información se presenta mediante componentes `JTable` y clases `TableModel`.
 
 ---
 
 ## 🗂️ Gestión de categorías
 
-Funcionalidad disponible para administradores.
+Esta funcionalidad se encuentra disponible para administradores.
 
 Permite:
 
@@ -92,32 +181,24 @@ Permite:
 * Modificar categorías.
 * Eliminar categorías.
 * Buscar categorías por descripción.
+* Generar automáticamente sus identificadores.
 
-### 📦 Espacio inicial automático
-
-Cuando se crea una nueva categoría, el sistema genera automáticamente un **recurso o espacio inicial asociado a ella**.
-
-Esto permite que una categoría recién creada pueda ser utilizada inmediatamente al realizar una reserva.
-
-Por ejemplo:
+Ejemplos de categorías:
 
 ```text
-Categoría:
+Laptop Windows 11
+Sala para 10 personas
+Proyector
 Laboratorio
-
-        ↓
-
-Recurso generado automáticamente:
-Espacio inicial - Laboratorio
 ```
 
-Si una categoría existente no posee ningún recurso asociado, el sistema también puede generar su espacio inicial al cargar los datos.
+Una categoría puede contener varios recursos.
 
 ---
 
 ## 💻 Gestión de recursos
 
-Funcionalidad disponible para administradores.
+Esta funcionalidad se encuentra disponible para administradores.
 
 Permite:
 
@@ -129,7 +210,7 @@ Permite:
 * Filtrar recursos por categoría.
 * Asociar cada recurso con una categoría.
 
-Una categoría puede contener múltiples recursos, permitiendo realizar varias reservas simultáneas siempre que existan recursos disponibles.
+Una categoría puede contener varios recursos, lo cual permite realizar reservas simultáneas siempre que existan unidades disponibles.
 
 Ejemplo:
 
@@ -147,23 +228,24 @@ Categoría: Proyectores
 
 ## Calendarización de recursos
 
-El sistema permite consultar la ocupación de los recursos según una fecha y categoría determinada.
+El sistema permite consultar la ocupación de los recursos según una fecha y una categoría determinada.
 
-La información se presenta mediante una estructura similar a una matriz:
+La información presenta:
 
-* Horas del día en las filas.
-* Recursos en las columnas.
-* Reservas existentes en las celdas.
+* Recursos pertenecientes a la categoría seleccionada.
+* Horas de inicio y finalización.
+* Actividades registradas.
+* Funcionarios responsables.
 * Filtrado por fecha.
 * Filtrado por categoría.
 
-Esto permite identificar visualmente cuáles recursos se encuentran ocupados y cuáles están disponibles.
+Esto permite identificar cuáles recursos se encuentran ocupados y cuáles están disponibles.
 
 ---
 
 ## 📋 Calendarización de actividades
 
-También se puede consultar la planificación semanal de actividades.
+El sistema también permite consultar la planificación semanal de las actividades.
 
 La calendarización muestra:
 
@@ -173,35 +255,36 @@ La calendarización muestra:
 * Reservas asociadas.
 * Funcionario responsable.
 
-Esto facilita visualizar la distribución semanal de las actividades registradas en el sistema.
+Esto facilita la visualización de las actividades registradas durante una semana.
 
 ---
 
 # 📊 Estadísticas
 
-El sistema incorpora un módulo de estadísticas que permite consultar información dentro de un período determinado.
+El sistema incorpora un módulo de estadísticas que permite consultar información dentro de un periodo determinado.
 
-Incluye dos secciones principales:
+## Recursos reservados por categoría
 
-### Recursos reservados por categoría
-
-Permite visualizar cuántos recursos han sido utilizados para cada categoría.
+Permite visualizar cuántos recursos fueron utilizados en cada categoría.
 
 La información se presenta mediante:
 
 * Tabla de resultados.
 * Gráfico de barras.
+* Selección de fecha inicial.
+* Selección de fecha final.
 
-### Actividades por semana
+## Actividades por semana
 
-Permite visualizar la cantidad de actividades realizadas durante las diferentes semanas del período seleccionado.
+Permite visualizar la cantidad de actividades programadas durante las semanas comprendidas en el periodo seleccionado.
 
 La información se presenta mediante:
 
 * Tabla de resultados.
 * Gráfico de barras.
+* Cantidad de actividades por semana.
 
-Los gráficos se actualizan automáticamente cuando se carga un nuevo período.
+Los gráficos se actualizan cuando se carga un nuevo periodo.
 
 Si no existen datos para el rango seleccionado, la interfaz informa que no hay información disponible.
 
@@ -209,9 +292,9 @@ Si no existen datos para el rango seleccionado, la interfaz informa que no hay i
 
 # 📄 Generación de reportes PDF
 
-El sistema permite exportar información de las principales tablas a archivos **PDF**.
+El sistema permite exportar la información de sus principales tablas a archivos PDF.
 
-La generación de reportes está disponible en:
+Los reportes se encuentran disponibles en:
 
 * Categorías.
 * Funcionarios.
@@ -219,29 +302,29 @@ La generación de reportes está disponible en:
 * Reservas.
 * Calendarización.
 * Actividades.
+* Estadísticas.
 
 Al seleccionar la opción **Imprimir**, el sistema abre un selector que permite elegir la ubicación y el nombre del archivo.
 
-Si la tabla se encuentra filtrada, el PDF contiene únicamente la información mostrada actualmente.
-
-Ejemplo:
+Si la tabla se encuentra filtrada, el PDF contiene únicamente la información mostrada.
 
 ```text
 Buscar → Mostrar resultados → Imprimir
                               ↓
-                        reporte.pdf
+                         reporte.pdf
 ```
 
-Los reportes PDF son generados directamente desde la aplicación.
+Después de generar el archivo, el sistema intenta abrirlo automáticamente.
 
 ---
 
 # 💾 Persistencia de datos
 
-El sistema utiliza un archivo **XML** para conservar la información.
+El sistema utiliza el archivo `data.xml` para conservar la información.
 
-Los cambios importantes son almacenados automáticamente, incluyendo:
+Los cambios almacenados incluyen:
 
+* Usuarios.
 * Funcionarios.
 * Categorías.
 * Recursos.
@@ -249,12 +332,12 @@ Los cambios importantes son almacenados automáticamente, incluyendo:
 * Cancelaciones.
 * Cambios de contraseña.
 
-La persistencia sigue aproximadamente el siguiente flujo:
+La persistencia sigue el siguiente flujo:
 
 ```text
 Usuario realiza una operación
             ↓
-          View
+           View
             ↓
         Controller
             ↓
@@ -265,12 +348,12 @@ Usuario realiza una operación
          data.xml
 ```
 
-Además, el sistema vuelve a guardar la información cuando se cierra la sesión o la aplicación.
-
 Al iniciar nuevamente el programa:
 
 ```text
 data.xml
+    ↓
+XmlPersister
     ↓
 Service
     ↓
@@ -279,13 +362,13 @@ Data
 Aplicación
 ```
 
-De esta manera, la información creada durante una ejecución permanece disponible al abrir nuevamente el sistema.
+De esta manera, la información permanece disponible después de cerrar y volver a abrir el sistema.
 
 ---
 
 # 🏗️ Arquitectura
 
-El proyecto utiliza una **arquitectura por capas** junto con el patrón **Modelo-Vista-Controlador (MVC)**.
+El proyecto utiliza una arquitectura por capas junto con el patrón **Modelo-Vista-Controlador**.
 
 ```text
 ┌──────────────────────────────────┐
@@ -320,15 +403,50 @@ El proyecto utiliza una **arquitectura por capas** junto con el patrón **Modelo
 └──────────────────────────────────┘
 ```
 
+## Capa de presentación
+
+Contiene las vistas, modelos, controladores y modelos de tabla de cada módulo.
+
+La vista se encarga de:
+
+* Mostrar la interfaz gráfica.
+* Leer los datos introducidos.
+* Realizar validaciones iniciales.
+* Escuchar las acciones del usuario.
+* Actualizar sus componentes cuando cambia el modelo.
+
+## Capa lógica
+
+Contiene las entidades y la clase `Service`.
+
+Se encarga de:
+
+* Aplicar las reglas del negocio.
+* Validar los datos.
+* Comprobar la disponibilidad de recursos.
+* Asignar recursos.
+* Gestionar usuarios.
+* Calcular estadísticas.
+* Procesar la extracción mediante IA.
+
+## Capa de datos
+
+Contiene:
+
+* `Data`.
+* `XmlPersister`.
+* Adaptadores para `LocalDate`.
+* Adaptadores para `LocalTime`.
+
+Esta capa carga y guarda la información mediante JAXB.
+
 ---
 
 # 🔄 Implementación MVC
 
-La interfaz utiliza diferentes mecanismos para mantener separadas las responsabilidades.
-
 ## `TableModel`
 
-Los `TableModel` transforman las colecciones de objetos del sistema en filas y columnas que pueden ser utilizadas por los componentes `JTable`.
+Los `TableModel` transforman las colecciones de objetos en filas y columnas que pueden ser utilizadas por los componentes `JTable`.
 
 ```text
 List<Funcionario>
@@ -338,7 +456,7 @@ List<Funcionario>
      JTable
 ```
 
-Se utilizan modelos de tabla para representar elementos como:
+Se utilizan modelos de tabla para representar:
 
 * Funcionarios.
 * Categorías.
@@ -351,7 +469,7 @@ Se utilizan modelos de tabla para representar elementos como:
 
 ## `PropertyChange`
 
-Se utiliza `PropertyChangeSupport` y `PropertyChangeListener` para comunicar cambios entre los modelos y las vistas.
+Se utilizan `PropertyChangeSupport` y `PropertyChangeListener` para comunicar los cambios entre los modelos y las vistas.
 
 ```text
 Model cambia
@@ -360,7 +478,7 @@ PropertyChange
      ↓
 View recibe el cambio
      ↓
-JTable / componentes se actualizan
+JTable y componentes se actualizan
 ```
 
 Esto evita que el modelo dependa directamente de los componentes gráficos.
@@ -369,9 +487,7 @@ Esto evita que el modelo dependa directamente de los componentes gráficos.
 
 ## `take()`
 
-Los métodos `take()` se encargan de obtener la información ingresada por el usuario desde los componentes de la interfaz.
-
-Por ejemplo:
+Los métodos `take()` obtienen la información ingresada por el usuario desde los componentes gráficos.
 
 ```text
 JTextField
@@ -388,9 +504,9 @@ Objeto del dominio
 
 ## `validate()`
 
-Antes de enviar información al controlador, las vistas realizan validaciones mediante métodos `validate()`.
+Antes de enviar la información al controlador, las vistas realizan validaciones mediante métodos `validate()`.
 
-Estas validaciones permiten detectar problemas como:
+Estas validaciones permiten detectar:
 
 * Campos vacíos.
 * Fechas inválidas.
@@ -416,8 +532,9 @@ Entre ellos:
 * Reservar.
 * Cancelar.
 * Cargar información.
+* Extraer información mediante IA.
 * Imprimir PDF.
-* Seleccionar filas de tablas.
+* Seleccionar filas de las tablas.
 
 El flujo general de una operación es:
 
@@ -445,78 +562,77 @@ View
 
 # 🛠️ Tecnologías utilizadas
 
-| Tecnología                | Uso                                     |
-| ------------------------- | --------------------------------------- |
-| ☕ Java                    | Lenguaje principal                      |
-| 🖥️ Java Swing            | Desarrollo de la interfaz gráfica       |
-| 🏛️ MVC                   | Organización de la interfaz             |
-| 🔄 PropertyChange         | Comunicación entre Model y View         |
-| 📊 TableModel             | Representación de objetos en JTable     |
-| 🧱 Arquitectura por capas | Separación de responsabilidades         |
-| 📄 XML                    | Persistencia de información             |
-| 📑 PDF                    | Generación de reportes                  |
-| 📈 Java AWT / Swing       | Generación y representación de gráficos |
-| 🧪 JUnit Jupiter          | Pruebas automatizadas                   |
-| 📦 Maven                  | Gestión de dependencias y construcción  |
-| 🔀 Git / GitHub           | Control de versiones                    |
+| Tecnología             | Uso                                              |
+| ---------------------- | ------------------------------------------------ |
+| Java                   | Lenguaje principal                               |
+| Java Swing             | Desarrollo de la interfaz gráfica                |
+| MVC                    | Organización de la interfaz                      |
+| PropertyChange         | Comunicación entre Model y View                  |
+| TableModel             | Representación de objetos en JTable              |
+| Arquitectura por capas | Separación de responsabilidades                  |
+| JAXB                   | Conversión entre objetos Java y XML              |
+| XML                    | Persistencia de información                      |
+| iText 7                | Generación de reportes PDF                       |
+| JFreeChart             | Generación de gráficos                           |
+| JUnit Jupiter          | Pruebas automatizadas                            |
+| Maven                  | Gestión de dependencias                          |
+| LangChain4j            | Integración con el modelo de lenguaje            |
+| GPT-4o mini            | Extracción de información desde lenguaje natural |
+| Git y GitHub           | Control de versiones                             |
 
 ---
 
 # 📁 Estructura general del proyecto
 
-La aplicación se encuentra organizada principalmente por módulos y responsabilidades.
-
 ```text
 SistemaReservas/
-│
 ├── pom.xml
 ├── data.xml
-│
 └── src/
     ├── main/
-    │   ├── java/
-    │   │   └── cr/ac/una/reservas/
-    │   │
-    │   │       ├── categorias/
-    │   │       │   ├── Controller.java
-    │   │       │   ├── Model.java
-    │   │       │   ├── TableModel.java
-    │   │       │   └── View.java
-    │   │       │
-    │   │       ├── funcionarios/
-    │   │       │   ├── Controller.java
-    │   │       │   ├── Model.java
-    │   │       │   ├── TableModel.java
-    │   │       │   └── View.java
-    │   │       │
-    │   │       ├── recursos/
-    │   │       │   ├── Controller.java
-    │   │       │   ├── Model.java
-    │   │       │   ├── TableModel.java
-    │   │       │   └── View.java
-    │   │       │
-    │   │       ├── reservas/
-    │   │       │   ├── Controller.java
-    │   │       │   ├── Model.java
-    │   │       │   ├── TableModel.java
-    │   │       │   └── View.java
-    │   │       │
-    │   │       ├── calendarizacion/
-    │   │       ├── actividades/
-    │   │       ├── estadisticas/
-    │   │       ├── login/
-    │   │       ├── cambioClave/
-    │   │       ├── service/
-    │   │       ├── data/
-    │   │       └── util/
-    │   │
-    │   └── resources/
-    │
+    │   └── java/reservas/
+    │       ├── Application.java
+    │       ├── data/
+    │       │   ├── Data.java
+    │       │   ├── XmlPersister.java
+    │       │   ├── LocalDateAdapter.java
+    │       │   └── LocalTimeAdapter.java
+    │       ├── logic/
+    │       │   ├── Categoria.java
+    │       │   ├── Funcionario.java
+    │       │   ├── Recurso.java
+    │       │   ├── Reserva.java
+    │       │   ├── Service.java
+    │       │   ├── Usuario.java
+    │       │   └── ai/
+    │       │       ├── ReservaExtraccion.java
+    │       │       ├── ReservaExtractorService.java
+    │       │       └── ReservaIA.java
+    │       ├── presentation/
+    │       │   ├── login/
+    │       │   ├── cambioclave/
+    │       │   ├── funcionarios/
+    │       │   ├── categorias/
+    │       │   ├── recursos/
+    │       │   ├── reservas/
+    │       │   ├── calendarizacion/
+    │       │   ├── actividades/
+    │       │   └── estadisticas/
+    │       └── util/
+    │           └── PdfReport.java
     └── test/
-        └── java/
+        └── java/reservas/
 ```
 
-> La estructura exacta puede variar ligeramente dependiendo de la versión final del repositorio.
+Los módulos de presentación contienen normalmente:
+
+```text
+Controller.java
+Model.java
+TableModel.java
+View.java
+View.form
+```
 
 ---
 
@@ -524,53 +640,30 @@ SistemaReservas/
 
 ## 👨‍💼 Administrador
 
-El administrador posee acceso a las funciones de mantenimiento y administración del sistema.
+El administrador puede:
 
-Puede gestionar:
-
-* Funcionarios.
-* Categorías.
-* Recursos.
-* Reservas.
-* Calendarización.
-* Actividades.
-* Estadísticas.
-* Reportes PDF.
-* Cambio de contraseña.
-
----
+* Gestionar funcionarios.
+* Gestionar categorías.
+* Gestionar recursos.
+* Consultar la calendarización.
+* Consultar actividades.
+* Visualizar estadísticas.
+* Generar reportes PDF.
+* Cambiar su contraseña.
 
 ## 👨‍💻 Funcionario
 
-El funcionario utiliza principalmente las funcionalidades relacionadas con las reservas.
-
-Puede:
+El funcionario puede:
 
 * Crear reservas.
+* Utilizar la extracción mediante IA.
 * Consultar sus reservas.
 * Cancelar reservas futuras.
-* Consultar disponibilidad.
-* Visualizar calendarizaciones.
-* Consultar estadísticas permitidas.
+* Consultar la calendarización.
+* Consultar las actividades.
+* Visualizar estadísticas.
+* Generar reportes PDF.
 * Cambiar su contraseña.
-
----
-
-# 🧪 Pruebas
-
-El proyecto utiliza **JUnit Jupiter** para las pruebas automatizadas.
-
-Las pruebas pueden dividirse en:
-
-### Pruebas unitarias
-
-Comprueban individualmente el comportamiento de clases y métodos del sistema.
-
-### Pruebas de integración
-
-Comprueban el funcionamiento conjunto de diferentes componentes y capas.
-
-Maven permite ejecutar las pruebas durante el proceso de construcción del proyecto.
 
 ---
 
@@ -578,52 +671,42 @@ Maven permite ejecutar las pruebas durante el proceso de construcción del proye
 
 ## Requisitos
 
-Antes de ejecutar el proyecto se recomienda contar con:
+Antes de ejecutar el proyecto se necesita:
 
-* Java JDK compatible con el proyecto.
+* Java JDK 22.
 * Maven.
-* IntelliJ IDEA o cualquier IDE compatible con proyectos Maven.
+* IntelliJ IDEA o cualquier IDE compatible con Maven.
+* Conexión a Internet para utilizar la Inteligencia Artificial.
 * Git, en caso de clonar el repositorio.
 
----
-
-## 1. Clonar el repositorio
+## Clonar el repositorio
 
 ```bash
 git clone URL_DEL_REPOSITORIO
 ```
 
-Luego ingresar al directorio:
+Ingresar a la carpeta:
 
 ```bash
 cd SistemaReservas
 ```
 
----
+## Abrir en IntelliJ IDEA
 
-## 2. Abrir el proyecto
+1. Abrir IntelliJ IDEA.
+2. Seleccionar **File → Open**.
+3. Seleccionar la carpeta donde se encuentra `pom.xml`.
+4. Esperar a que Maven descargue las dependencias.
+5. Configurar el proyecto para utilizar Java 22.
+6. Ejecutar `reservas.Application`.
 
-Abrir la carpeta del proyecto desde **IntelliJ IDEA**.
-
-Al tratarse de un proyecto Maven, IntelliJ puede detectar automáticamente el archivo:
-
-```text
-pom.xml
-```
-
-y descargar las dependencias necesarias.
-
----
-
-## 3. Compilar el proyecto
-
-Desde una terminal:
+## Compilar desde la terminal
 
 ```bash
 mvn clean compile
 ```
 
-También puede utilizarse:
+Para realizar una construcción completa:
 
 ```bash
 mvn clean install
@@ -631,21 +714,41 @@ mvn clean install
 
 ---
 
-## 4. Ejecutar la aplicación
+# 🔑 Usuarios iniciales
 
-Ejecutar desde IntelliJ la clase principal (`main`) correspondiente a la aplicación.
+El archivo `data.xml` contiene usuarios de referencia para probar los dos roles.
 
-El archivo:
+## Administrador
 
 ```text
-data.xml
+ID: ADM001
+Clave: 001
 ```
 
-debe permanecer disponible para que el sistema pueda cargar y almacenar la información persistente.
+## Funcionario
+
+```text
+ID: USR001
+Clave: 001
+```
+
+Las contraseñas pueden cambiarse desde la aplicación.
+
+Cuando el administrador registra un nuevo funcionario, su contraseña inicial queda igual que su ID.
 
 ---
 
-# 🧪 Ejecución de pruebas
+# 🧪 Pruebas
+
+El proyecto utiliza **JUnit Jupiter** para realizar pruebas automatizadas.
+
+## Pruebas unitarias
+
+Comprueban individualmente el comportamiento de clases y métodos.
+
+## Pruebas de integración
+
+Comprueban el funcionamiento conjunto de las diferentes capas del sistema.
 
 Para ejecutar las pruebas:
 
@@ -653,7 +756,7 @@ Para ejecutar las pruebas:
 mvn test
 ```
 
-Para ejecutar el ciclo completo de validación:
+Para ejecutar todas las verificaciones:
 
 ```bash
 mvn verify
@@ -663,18 +766,26 @@ mvn verify
 
 # 💾 Consideraciones sobre `data.xml`
 
-El archivo `data.xml` contiene la información persistente utilizada por el sistema.
+El archivo `data.xml` contiene la información persistente del sistema.
 
-Por esta razón, no debe eliminarse si se desea conservar:
+No debe eliminarse si se desea conservar:
 
 * Usuarios.
+* Funcionarios.
 * Categorías.
 * Recursos.
 * Reservas.
 * Contraseñas modificadas.
-* Información registrada durante ejecuciones anteriores.
+* Cancelaciones.
 
-El sistema actualiza este archivo automáticamente cuando se realizan operaciones que modifican los datos.
+Debe permanecer en la carpeta principal del proyecto, al mismo nivel que `pom.xml`.
+
+```text
+SistemaReservas/
+├── data.xml
+├── pom.xml
+└── src/
+```
 
 ---
 
@@ -686,82 +797,72 @@ Se recomienda almacenar las capturas del proyecto dentro de:
 docs/screenshots/
 ```
 
-Por ejemplo:
+Ejemplo:
 
 ```text
 docs/
 └── screenshots/
     ├── login.png
     ├── reservas.png
+    ├── inteligencia-artificial.png
     ├── funcionarios.png
     ├── categorias.png
     ├── recursos.png
     ├── calendarizacion.png
+    ├── actividades.png
     └── estadisticas.png
 ```
 
-Posteriormente pueden mostrarse en este README:
+Las imágenes pueden mostrarse en el README de la siguiente manera:
 
-### 🔐 Inicio de sesión
-
-![Login](docs/screenshots/login.png)
-
-### 📅 Reservas
-
-![Reservas](docs/screenshots/reservas.png)
-
-### 👥 Funcionarios
-
-![Funcionarios](docs/screenshots/funcionarios.png)
-
-### 🗂️ Categorías
-
-![Categorías](docs/screenshots/categorias.png)
-
-### 💻 Recursos
-
-![Recursos](docs/screenshots/recursos.png)
-
-### 📊 Estadísticas
-
+```markdown
+![Inicio de sesión](docs/screenshots/login.png)
+![Reservas con IA](docs/screenshots/inteligencia-artificial.png)
 ![Estadísticas](docs/screenshots/estadisticas.png)
+```
 
 ---
 
 # 👨‍💻 Equipo de desarrollo
 
-**EIF206 – Programación 3**
-**Universidad Nacional de Costa Rica**
+Proyecto desarrollado por:
+
+* Warner Guevara.
+* Javier Acosta.
+* Aaron Agüero.
+
+Curso:
+
+```text
+EIF206 - Programación 3
+Universidad Nacional de Costa Rica
 Facultad de Ciencias Exactas y Naturales
 Escuela de Informática
-
-### Integrantes
-
-* 👤 Warner Guevara
-* 👤 Javier Acosta
-* 👤 Aaron Aguero
+```
 
 ---
 
 # 📚 Contexto académico
 
-Este proyecto fue desarrollado como parte del **Proyecto #1: Sistema de Reserva de Recursos** del curso **EIF206 – Programación 3 (2026-II)**.
+Este proyecto fue desarrollado como parte del **Proyecto #1: Sistema de Reserva de Recursos** del curso **EIF206 - Programación 3 (2026-II)**.
 
-Su desarrollo busca aplicar conceptos estudiados durante el curso, entre ellos:
+Su desarrollo permite aplicar conceptos como:
 
 * Programación orientada a objetos.
 * Arquitectura por capas.
-* Patrón MVC.
+* Patrón Modelo-Vista-Controlador.
 * Interfaces gráficas con Java Swing.
 * `PropertyChangeSupport`.
 * `PropertyChangeListener`.
 * `TableModel`.
 * Validación de datos.
 * Manejo de eventos mediante listeners.
-* Persistencia de información.
-* Generación de reportes.
+* Persistencia XML.
+* Generación de reportes PDF.
+* Creación de gráficos.
+* Integración con Inteligencia Artificial.
 * Pruebas automatizadas.
-* Control de versiones con Git.
+* Control de versiones con Git y GitHub.
 
 ---
 
@@ -774,32 +875,51 @@ Su desarrollo busca aplicar conceptos estudiados durante el curso, entre ellos:
 * [x] Cambio de contraseña.
 * [x] Gestión de funcionarios.
 * [x] Gestión de categorías.
-* [x] Creación automática de espacio inicial para nuevas categorías.
 * [x] Gestión de recursos.
 * [x] Gestión de reservas.
 * [x] Validación de disponibilidad.
 * [x] Asignación automática de recursos.
-* [x] Cancelación de reservas.
+* [x] Cancelación de reservas futuras.
 * [x] Calendarización de recursos.
 * [x] Calendarización de actividades.
 * [x] Estadísticas.
 * [x] Gráficos de barras.
 * [x] Generación de reportes PDF.
-* [x] `TableModel`.
-* [x] `PropertyChange`.
+* [x] Modelos `TableModel`.
+* [x] Comunicación mediante `PropertyChange`.
 * [x] Métodos `take()`.
 * [x] Métodos `validate()`.
 * [x] Listeners de la interfaz.
 * [x] Persistencia mediante XML.
 * [x] Guardado automático de cambios.
-* [x] Recuperación de información al reiniciar la aplicación.
+* [x] Recuperación de información al reiniciar.
+* [x] Lectura de frases en lenguaje natural.
+* [x] Extracción del nombre de la actividad.
+* [x] Extracción de fecha.
+* [x] Extracción de hora inicial y final.
+* [x] Extracción de categorías.
+* [x] Validación de categorías existentes.
+* [x] Actualización automática del formulario.
+* [x] Edición manual de los datos generados por IA.
+* [x] Integración con LangChain4j y GPT-4o mini.
 
 ---
 
-## 🎓 Propósito
+# 🎓 Propósito
 
-El sistema constituye una aplicación de escritorio completa orientada a demostrar la aplicación práctica de **Programación Orientada a Objetos, MVC, arquitectura por capas, interfaces gráficas, persistencia y manejo de eventos en Java**.
+El sistema constituye una aplicación de escritorio orientada a demostrar la aplicación práctica de:
+
+* Programación orientada a objetos.
+* Arquitectura por capas.
+* Modelo-Vista-Controlador.
+* Interfaces gráficas.
+* Persistencia de datos.
+* Manejo de eventos.
+* Generación de reportes.
+* Visualización de estadísticas.
+* Integración con Inteligencia Artificial.
 
 ---
 
-**Universidad Nacional de Costa Rica — EIF206 Programación 3 — 2026-II**
+**Universidad Nacional de Costa Rica - EIF206 Programación 3 - 2026-II**
+
