@@ -40,6 +40,9 @@ public class Service {
             data = new Data();
         }
     }
+    public Service(Data data) {
+        this.data = data;
+    }
     // Stop para cuando termine
     public void stop() {
         try {
