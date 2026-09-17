@@ -11,6 +11,11 @@
             <clave>001</clave>
             <rol>ADMIN</rol>
         </usuario>
+        <usuario>
+            <id>FUN002</id>
+            <clave>FUN002</clave>
+            <rol>FUNCIONARIO</rol>
+        </usuario>
     </usuarios>
     <funcionarios>
         <funcionario>
@@ -19,11 +24,24 @@
             <telefono>88888888</telefono>
             <usuario>USR001</usuario>
         </funcionario>
+        <funcionario>
+            <id>FUN002</id>
+            <nombre>Javier Acosta Quesada</nombre>
+            <telefono>71614940</telefono>
+        </funcionario>
     </funcionarios>
     <categorias>
         <categoria>
             <id>CAT001</id>
             <descripcion>Laptop Windows 11</descripcion>
+        </categoria>
+        <categoria>
+            <id>CAT-0000002</id>
+            <descripcion>Proyector epson</descripcion>
+        </categoria>
+        <categoria>
+            <id>CAT-0000003</id>
+            <descripcion>Sala para 10 personas</descripcion>
         </categoria>
     </categorias>
     <recursos>
@@ -31,6 +49,16 @@
             <id>REC001</id>
             <categoria>CAT001</categoria>
             <descripcion>Laptop #238715</descripcion>
+        </recurso>
+        <recurso>
+            <id>REC002</id>
+            <categoria>CAT-0000002</categoria>
+            <descripcion>Proyector #128933</descripcion>
+        </recurso>
+        <recurso>
+            <id>REC003</id>
+            <categoria>CAT-0000003</categoria>
+            <descripcion>Sala 1001</descripcion>
         </recurso>
     </recursos>
     <reservas>
@@ -42,6 +70,21 @@
             <fecha>2026-09-10</fecha>
             <horaInicio>08:00</horaInicio>
             <horaFin>10:00</horaFin>
+            <categorias>
+                <categoria>CAT001</categoria>
+            </categorias>
+            <recursos>
+                <recurso>REC001</recurso>
+            </recursos>
+        </reserva>
+        <reserva>
+            <id>RES-0000002</id>
+            <funcionario>FUN001</funcionario>
+            <actividad>junta de marketing</actividad>
+            <estado>ACTIVA</estado>
+            <fecha>2026-09-20</fecha>
+            <horaInicio>13:00</horaInicio>
+            <horaFin>15:00</horaFin>
             <categorias>
                 <categoria>CAT001</categoria>
             </categorias>

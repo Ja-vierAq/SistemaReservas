@@ -1,7 +1,12 @@
 package reservas.logic;
 
+import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.service.AiServices;
 import reservas.data.Data;
 import reservas.data.XmlPersister;
+import reservas.logic.ai.ReservaExtraccion;
+import reservas.logic.ai.ReservaExtractorService;
+import reservas.logic.ai.ReservaIA;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -18,7 +23,6 @@ public class Service {
 
     private static Service theInstance;
     private Data data;
-    private boolean persistenceEnabled = true;
 
     // Contructor e instanciador
     public static Service instance() {
@@ -31,21 +35,24 @@ public class Service {
         try {
             data = XmlPersister.instance().load();
         } catch (Exception e) {
+            System.err.println("No se pudo cargar data.xml: " + e.getMessage());
+            System.err.println("Ruta intentada: " + XmlPersister.instance().getResolvedPath());
             data = new Data();
         }
-    }
-    //Constructor para test
-    Service(Data data) {
-        this.data = data == null ? new Data() : data;
-        this.persistenceEnabled = false;
     }
     // Stop para cuando termine
     public void stop() {
         try {
-            XmlPersister.instance().store(data);
+            persist();
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            System.err.println("No se pudieron guardar los datos: " + e.getMessage());
         }
+    }
+
+    // Guarda inmediatamente el estado actual del sistema en data.xml.
+    // Así los cambios no dependen únicamente de que la ventana se cierre correctamente.
+    private void persist() throws Exception {
+        XmlPersister.instance().store(data);
     }
 
     //=========================================================
@@ -79,6 +86,7 @@ public class Service {
             throw new Exception("La clave actual es incorrecta");
         }
         usuario.setClave(claveNueva);
+        persist();
     }
 
     // =========================================================
@@ -97,6 +105,7 @@ public class Service {
         e.setUsuario(usuario);
         data.getUsuarios().add(usuario);
         data.getFuncionarios().add(e);
+        persist();
     }
 
     public Funcionario read(Funcionario e) throws Exception {
@@ -113,6 +122,7 @@ public class Service {
         Funcionario actual = read(e);
         actual.setNombre(e.getNombre());
         actual.setTelefono(e.getTelefono());
+        persist();
     }
 
     public void delete(Funcionario e) throws Exception {
@@ -126,6 +136,7 @@ public class Service {
         if (actual.getUsuario() != null) {
             data.getUsuarios().remove(actual.getUsuario());
         }
+        persist();
     }
 
     public List<Funcionario> search(Funcionario filtro) {
@@ -151,6 +162,7 @@ public class Service {
             throw new Exception("Categoría ya existe");
         }
         data.getCategorias().add(e);
+        persist();
     }
 
     public Categoria read(Categoria e) throws Exception {
@@ -166,22 +178,21 @@ public class Service {
         validarCategoria(e, true);
         Categoria actual = read(e);
         actual.setDescripcion(e.getDescripcion());
+        persist();
     }
 
     public void delete(Categoria e) throws Exception {
         Categoria actual = read(e);
-
-        boolean tieneRecursos = data.getRecursos().stream().anyMatch(r -> mismaCategoria(r.getCategoria(), actual));
-        if (tieneRecursos) {
-            throw new Exception("No se puede borrar la categoría porque tiene recursos asociados");
-        }
-
         boolean estaEnReservas = data.getReservas().stream().anyMatch(r -> contieneCategoria(r.getCategorias(), actual));
         if (estaEnReservas) {
             throw new Exception("No se puede borrar la categoría porque aparece en reservas");
         }
-
+        boolean tieneRecursos = data.getRecursos().stream().anyMatch(r -> mismaCategoria(r.getCategoria(), actual));
+        if (tieneRecursos) {
+            throw new Exception("No se puede borrar la categoría porque tiene recursos asociados");
+        }
         data.getCategorias().remove(actual);
+        persist();
     }
 
     public List<Categoria> search(Categoria filtro) {
@@ -204,6 +215,7 @@ public class Service {
         }
         e.setCategoria(read(e.getCategoria()));
         data.getRecursos().add(e);
+        persist();
     }
 
     public Recurso read(Recurso e) throws Exception {
@@ -220,6 +232,7 @@ public class Service {
         Recurso actual = read(e);
         actual.setCategoria(read(e.getCategoria()));
         actual.setDescripcion(e.getDescripcion());
+        persist();
     }
 
     public void delete(Recurso e) throws Exception {
@@ -230,6 +243,7 @@ public class Service {
             throw new Exception("No se puede borrar el recurso porque aparece en reservas");
         }
         data.getRecursos().remove(actual);
+        persist();
     }
 
     public List<Recurso> search(Recurso filtro) {
@@ -285,6 +299,7 @@ public class Service {
         e.setRecursos(asignados);
         e.setEstado("ACTIVA");
         data.getReservas().add(e);
+        persist();
     }
 
     public Reserva read(Reserva e) throws Exception {
@@ -306,6 +321,7 @@ public class Service {
         }
         actual.setEstado("CANCELADA");
         actual.getRecursos().clear();
+        persist();
     }
 
     public List<Reserva> findReservas(Funcionario funcionario) throws Exception {
@@ -434,7 +450,8 @@ public class Service {
                 .collect(Collectors.toList());
     }
 
-    private Recurso primerRecursoDisponible(Categoria categoria, LocalDate fecha, LocalTime inicio, LocalTime fin) {
+    private Recurso primerRecursoDisponible(Categoria categoria, LocalDate fecha,
+                                            LocalTime inicio, LocalTime fin) {
         return data.getRecursos().stream()
                 .filter(r -> mismaCategoria(r.getCategoria(), categoria))
                 .sorted(Comparator.comparing(Recurso::getId))
@@ -443,14 +460,17 @@ public class Service {
                 .orElse(null);
     }
 
-    private boolean recursoDisponible(Recurso recurso, LocalDate fecha, LocalTime inicio, LocalTime fin) {
+    private boolean recursoDisponible(Recurso recurso, LocalDate fecha,
+                                      LocalTime inicio, LocalTime fin) {
         return data.getReservas().stream()
                 .filter(this::esActiva)
                 .filter(r -> fecha.equals(r.getFecha()))
                 .filter(r -> contieneRecurso(r.getRecursos(), recurso))
-                .noneMatch(r -> seTraslapan(inicio, fin, r.getHoraInicio(), r.getHoraFin()));}
+                .noneMatch(r -> seTraslapan(inicio, fin, r.getHoraInicio(), r.getHoraFin()));
+    }
 
-    private boolean seTraslapan(LocalTime inicio1, LocalTime fin1, LocalTime inicio2, LocalTime fin2) {
+    private boolean seTraslapan(LocalTime inicio1, LocalTime fin1,
+                                LocalTime inicio2, LocalTime fin2) {
         return inicio1.isBefore(fin2) && fin1.isAfter(inicio2);
     }
 
@@ -462,7 +482,8 @@ public class Service {
         LocalDate hoy = LocalDate.now();
         LocalTime ahora = LocalTime.now();
 
-        return reserva.getFecha().isAfter(hoy) || (reserva.getFecha().equals(hoy) && reserva.getHoraInicio().isAfter(ahora));
+        return reserva.getFecha().isAfter(hoy)
+                || (reserva.getFecha().equals(hoy) && reserva.getHoraInicio().isAfter(ahora));
     }
 
     private List<Categoria> categoriasCanonicas(List<Categoria> categorias) throws Exception {
@@ -522,6 +543,14 @@ public class Service {
                 .max()
                 .orElse(0);
         return String.format("CAT-%07d", max + 1);
+    }
+
+    private String siguienteIdRecurso() {
+        int max = data.getRecursos().stream()
+                .mapToInt(r -> numeroId(r.getId()))
+                .max()
+                .orElse(0);
+        return String.format("REC-%07d", max + 1);
     }
 
     private String siguienteIdReserva() {
@@ -599,9 +628,36 @@ public class Service {
         return valor == null ? "" : valor.trim().toLowerCase();
     }
 
-    private void persist() throws Exception {
-        if (persistenceEnabled) {
-            XmlPersister.instance().store(data);
+    //Metodo principal de extrarer los datos con ia
+    public ReservaIA extractIA(String frase) throws Exception {
+        if (frase == null || frase.isBlank()) {
+            throw new Exception("Debe escribir una descripción de la reserva");
         }
+        OpenAiChatModel aiModel = OpenAiChatModel.builder().baseUrl("http://langchain4j.dev/demo/openai/v1").apiKey("demo").modelName("gpt-4o-mini").build();
+        ReservaExtractorService aiService = AiServices.create(ReservaExtractorService.class, aiModel);
+        String categoriasDisponibles = data.getCategorias().stream().map(Categoria::getDescripcion).collect(Collectors.joining("\n"));
+        ReservaExtraccion respuesta = aiService.extraer(frase, categoriasDisponibles, LocalDate.now().toString());
+
+        //convertir lo que nos da la ia a un recurso que se pueda entender
+        LocalDate fecha = null;
+        LocalTime inicio = null;
+        LocalTime fin = null;
+        if (respuesta.getFecha() != null) {
+            fecha = LocalDate.parse(respuesta.getFecha());
+        }
+        if (respuesta.getHoraInicio() != null) {
+            inicio = LocalTime.parse(respuesta.getHoraInicio());
+        }
+        if (respuesta.getHoraFinal() != null) {
+            fin = LocalTime.parse(respuesta.getHoraFinal());
+        }
+        List<String> categorias = respuesta.getCategoriasRecurso() == null ? new ArrayList<>() : respuesta.getCategoriasRecurso();
+        return new ReservaIA(respuesta.getActividad(), fecha, inicio, fin, categorias);
+    }
+    public Categoria findCategoriaByDescripcion(String descripcion) {
+        return data.getCategorias().stream()
+                .filter(c -> c.getDescripcion().equalsIgnoreCase(descripcion))
+                .findFirst()
+                .orElse(null);
     }
 }

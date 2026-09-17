@@ -1,9 +1,12 @@
 package reservas.presentation.reservas;
 
-import reservas.logic.Funcionario;
-import reservas.logic.Reserva;
-import reservas.logic.Service;
+import reservas.logic.*;
+import reservas.logic.ai.ReservaIA;
+import reservas.util.PdfReport;
 import reservas.presentation.Sesion;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class Controller {
     private final View view;
@@ -48,12 +51,10 @@ public class Controller {
         model.setSelected(null);
     }
 
-    public void extractIA(String frase) throws Exception {
-        // funcion de ia no implementada aun
-    }
-
     public void print() throws Exception {
-        // generacion de PDF no implementada aun
+        PdfReport.exportTable(view.getPanel(), "Reporte de Reservas",
+                new TableModel(new int[]{TableModel.ID, TableModel.ACTIVIDAD, TableModel.FECHA, TableModel.INICIO,
+                        TableModel.FIN, TableModel.CATEGORIAS, TableModel.ESTADO}, model.getList()));
     }
 
     private void refresh() {
@@ -77,5 +78,32 @@ public class Controller {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException(
                         "El usuario autenticado no tiene un funcionario asociado"));
+    }
+
+    //Metodo para extraer reserva de una frase con ia
+    public void extractIA(String frase) throws Exception {
+        ReservaIA datos = Service.instance().extractIA(frase);
+
+        Reserva current = model.getCurrent();
+
+        current.setActividad(datos.getActividad());
+        current.setFecha(datos.getFecha());
+        current.setHoraInicio(datos.getHoraInicio());
+        current.setHoraFin(datos.getHoraFin());
+
+        List<Categoria> categorias = new ArrayList<>();
+
+        for (String descripcion : datos.getCategorias()) {
+            Categoria categoria =
+                    Service.instance().findCategoriaByDescripcion(descripcion);
+
+            if (categoria != null) {
+                categorias.add(categoria);
+            }
+        }
+
+        current.setCategorias(categorias);
+
+        model.setCurrent(current);
     }
 }

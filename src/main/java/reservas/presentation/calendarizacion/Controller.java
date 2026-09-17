@@ -4,6 +4,7 @@ import reservas.logic.Categoria;
 import reservas.logic.Recurso;
 import reservas.logic.Reserva;
 import reservas.logic.Service;
+import reservas.util.PdfReport;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -35,6 +36,8 @@ public class Controller {
     }
 
     public void print() throws Exception {
-        // generacion de PDF no implementada aun
+        PdfReport.exportTable(view.getPanel(), "Reporte de Calendarización",
+                new TableModel(new int[]{TableModel.RECURSOS, TableModel.INICIO, TableModel.FIN,
+                        TableModel.ACTIVIDAD, TableModel.FUNCIONARIO}, model.getReservas()));
     }
 }

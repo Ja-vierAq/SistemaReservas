@@ -2,6 +2,7 @@ package reservas.presentation.funcionarios;
 
 import reservas.logic.Funcionario;
 import reservas.logic.Service;
+import reservas.util.PdfReport;
 
 public class Controller {
     private final View view;
@@ -51,7 +52,8 @@ public class Controller {
     }
 
     public void print() throws Exception {
-        // generacion de PDF no implementada aun
+        PdfReport.exportTable(view.getPanel(), "Reporte de Funcionarios",
+                new TableModel(new int[]{TableModel.ID, TableModel.NOMBRE, TableModel.TELEFONO}, model.getList()));
     }
 
     private void refresh() {

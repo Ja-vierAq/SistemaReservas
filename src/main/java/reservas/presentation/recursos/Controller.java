@@ -3,6 +3,7 @@ package reservas.presentation.recursos;
 import reservas.logic.Categoria;
 import reservas.logic.Recurso;
 import reservas.logic.Service;
+import reservas.util.PdfReport;
 
 public class Controller {
     private final View view;
@@ -53,7 +54,8 @@ public class Controller {
     }
 
     public void print() throws Exception {
-        // generacion de PDF no implementada aun
+        PdfReport.exportTable(view.getPanel(), "Reporte de Recursos",
+                new TableModel(new int[]{TableModel.ID, TableModel.CATEGORIA, TableModel.DESCRIPCION}, model.getList()));
     }
 
     private void refresh() {

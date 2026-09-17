@@ -24,17 +24,7 @@ public class View extends JDialog {
         setTitle("Sistema de Reservas - Login");
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         //listener
-        loginIngresarFld.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                try {
-                    controller.login(loginIdFld.getText(), new String(loginClaveFld.getPassword()));
-
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(panel, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        });
+        loginIngresarFld.addActionListener(e -> login());
         loginCancelarFld.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -46,7 +36,7 @@ public class View extends JDialog {
         loginCambiarFld.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                //accion de cambiar clave
+                cambiarClave();
             }
         });
     }
@@ -63,7 +53,26 @@ public class View extends JDialog {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Login", JOptionPane.ERROR_MESSAGE);
         }
     }
+    private void cambiarClave() {
+        try {
+            String id = loginIdFld.getText();
+            String clave = new String(loginClaveFld.getPassword());
+            if (id.isBlank() || clave.isBlank()) {
+                throw new Exception(
+                        "Debe ingresar su ID y clave actual antes de cambiar la contraseña"
+                );
+            }
+            controller.cambiarClave(id, clave);
 
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    ex.getMessage(),
+                    "Cambiar clave",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
+    }
     public void setController(Controller controller) {this.controller = controller;}
     public void setModel(Model model) {this.model = model;}
 }
