@@ -18,6 +18,7 @@ public class Service {
 
     private static Service theInstance;
     private Data data;
+    private boolean persistenceEnabled = true;
 
     // Contructor e instanciador
     public static Service instance() {
@@ -32,6 +33,11 @@ public class Service {
         } catch (Exception e) {
             data = new Data();
         }
+    }
+    //Constructor para test
+    Service(Data data) {
+        this.data = data == null ? new Data() : data;
+        this.persistenceEnabled = false;
     }
     // Stop para cuando termine
     public void stop() {
@@ -428,8 +434,7 @@ public class Service {
                 .collect(Collectors.toList());
     }
 
-    private Recurso primerRecursoDisponible(Categoria categoria, LocalDate fecha,
-                                            LocalTime inicio, LocalTime fin) {
+    private Recurso primerRecursoDisponible(Categoria categoria, LocalDate fecha, LocalTime inicio, LocalTime fin) {
         return data.getRecursos().stream()
                 .filter(r -> mismaCategoria(r.getCategoria(), categoria))
                 .sorted(Comparator.comparing(Recurso::getId))
@@ -438,17 +443,14 @@ public class Service {
                 .orElse(null);
     }
 
-    private boolean recursoDisponible(Recurso recurso, LocalDate fecha,
-                                      LocalTime inicio, LocalTime fin) {
+    private boolean recursoDisponible(Recurso recurso, LocalDate fecha, LocalTime inicio, LocalTime fin) {
         return data.getReservas().stream()
                 .filter(this::esActiva)
                 .filter(r -> fecha.equals(r.getFecha()))
                 .filter(r -> contieneRecurso(r.getRecursos(), recurso))
-                .noneMatch(r -> seTraslapan(inicio, fin, r.getHoraInicio(), r.getHoraFin()));
-    }
+                .noneMatch(r -> seTraslapan(inicio, fin, r.getHoraInicio(), r.getHoraFin()));}
 
-    private boolean seTraslapan(LocalTime inicio1, LocalTime fin1,
-                                LocalTime inicio2, LocalTime fin2) {
+    private boolean seTraslapan(LocalTime inicio1, LocalTime fin1, LocalTime inicio2, LocalTime fin2) {
         return inicio1.isBefore(fin2) && fin1.isAfter(inicio2);
     }
 
@@ -460,8 +462,7 @@ public class Service {
         LocalDate hoy = LocalDate.now();
         LocalTime ahora = LocalTime.now();
 
-        return reserva.getFecha().isAfter(hoy)
-                || (reserva.getFecha().equals(hoy) && reserva.getHoraInicio().isAfter(ahora));
+        return reserva.getFecha().isAfter(hoy) || (reserva.getFecha().equals(hoy) && reserva.getHoraInicio().isAfter(ahora));
     }
 
     private List<Categoria> categoriasCanonicas(List<Categoria> categorias) throws Exception {
@@ -596,5 +597,11 @@ public class Service {
 
     private String textoFiltro(String valor) {
         return valor == null ? "" : valor.trim().toLowerCase();
+    }
+
+    private void persist() throws Exception {
+        if (persistenceEnabled) {
+            XmlPersister.instance().store(data);
+        }
     }
 }
