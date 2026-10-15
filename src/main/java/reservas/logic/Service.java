@@ -2,665 +2,287 @@ package reservas.logic;
 
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;
-import reservas.data.Data;
-import reservas.data.XmlPersister;
+import reservas.data.*;
 import reservas.logic.ai.ReservaExtraccion;
 import reservas.logic.ai.ReservaExtractorService;
 import reservas.logic.ai.ReservaIA;
 
+import java.sql.Connection;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Service {
 
     private static Service theInstance;
-    private Data data;
 
-    // Contructor e instanciador
     public static Service instance() {
-        if (theInstance == null) {
-            theInstance = new Service();
-        }
+        if (theInstance == null) theInstance = new Service();
         return theInstance;
     }
+
+    private final UsuarioDao usuarioDao;
+    private final FuncionarioDao funcionarioDao;
+    private final CategoriaDao categoriaDao;
+    private final RecursoDao recursoDao;
+    private final ReservaDao reservaDao;
+
     private Service() {
-        try {
-            data = XmlPersister.instance().load();
-        } catch (Exception e) {
-            System.err.println("No se pudo cargar data.xml: " + e.getMessage());
-            System.err.println("Ruta intentada: " + XmlPersister.instance().getResolvedPath());
-            data = new Data();
-        }
-    }
-    public Service(Data data) {
-        this.data = data;
-    }
-    // Stop para cuando termine
-    public void stop() {
-        try {
-            persist();
-        } catch (Exception e) {
-            System.err.println("No se pudieron guardar los datos: " + e.getMessage());
-        }
+        usuarioDao = new UsuarioDao();
+        funcionarioDao = new FuncionarioDao();
+        categoriaDao = new CategoriaDao();
+        recursoDao = new RecursoDao();
+        reservaDao = new ReservaDao();
     }
 
-    // Guarda inmediatamente el estado actual del sistema en data.xml.
-    // Así los cambios no dependen únicamente de que la ventana se cierre correctamente.
-    private void persist() throws Exception {
-        XmlPersister.instance().store(data);
-    }
-
-    //=========================================================
-    //USUARIOS / LOGIN / CAMBIO DE CLAVE
-    //==========================================================
+    // USUARIOS
 
     public Usuario login(String id, String clave) throws Exception {
-        Usuario buscado = new Usuario();
-        buscado.setId(id);
-        Usuario usuario = read(buscado);
-        if (!usuario.getClave().equals(clave)) {
-            throw new Exception("usuario o clave incorrectos");
-        }
+        Usuario usuario = usuarioDao.read(id);
+        if (!usuario.getClave().equals(clave)) throw new Exception("Usuario o clave incorrectos");
         return usuario;
     }
 
     public Usuario read(Usuario e) throws Exception {
-        validarTexto(e == null ? null : e.getId(), "Id de usuario");
-        Usuario result = data.getUsuarios().stream().filter(i -> i.getId().equals(e.getId())).findFirst().orElse(null);
-        if (result != null) {
-            return result;
-        }
-        throw new Exception("Usuario no existe");
+        return usuarioDao.read(e.getId());
     }
 
     public void cambiarClave(Usuario e, String claveActual, String claveNueva) throws Exception {
-        Usuario usuario = read(e);
-        validarTexto(claveActual, "Clave actual");
-        validarTexto(claveNueva, "Clave nueva");
-        if (!usuario.getClave().equals(claveActual)) {
-            throw new Exception("La clave actual es incorrecta");
-        }
-        usuario.setClave(claveNueva);
-        persist();
+        Usuario usuario = usuarioDao.read(e.getId());
+        if (!usuario.getClave().equals(claveActual)) throw new Exception("La clave actual es incorrecta");
+        if (claveNueva == null || claveNueva.isBlank()) throw new Exception("La clave nueva es requerida");
+        usuarioDao.cambiarClave(e.getId(), claveNueva);
+        e.setClave(claveNueva);
     }
 
-    // =========================================================
     // FUNCIONARIOS
-    // =========================================================
 
-    public void create(Funcionario e) throws Exception {
-        validarFuncionario(e);
-        if (existeFuncionario(e.getId())) {
-            throw new Exception("Funcionario ya existe");
+    public void create(Funcionario e) throws Exception { funcionarioDao.createConUsuario(e); }
+    public Funcionario read(Funcionario e) throws Exception { return funcionarioDao.read(e.getId()); }
+    public void update(Funcionario e) throws Exception { funcionarioDao.update(e); }
+    public void delete(Funcionario e) throws Exception { funcionarioDao.deleteConUsuario(e.getId()); }
+
+    public List<Funcionario> search(Funcionario e) {
+        try {
+            return funcionarioDao.search(e.getId(), e.getNombre());
+        } catch (Exception ex) {
+            throw new IllegalStateException("Error buscando funcionarios", ex);
         }
-        if (existeUsuario(e.getId())) {
-            throw new Exception("Ya existe un usuario con ese id");
-        }
-        Usuario usuario = new Usuario(e.getId(), e.getId(), "FUNCIONARIO");
-        e.setUsuario(usuario);
-        data.getUsuarios().add(usuario);
-        data.getFuncionarios().add(e);
-        persist();
     }
 
-    public Funcionario read(Funcionario e) throws Exception {
-        validarTexto(e == null ? null : e.getId(), "Id de funcionario");
-        Funcionario result = data.getFuncionarios().stream().filter(i -> i.getId().equals(e.getId())).findFirst().orElse(null);
-        if (result != null) {
-            return result;
-        }
-        throw new Exception("Funcionario no existe");
-    }
+    public List<Funcionario> findAllFuncionarios() { return search(new Funcionario()); }
 
-    public void update(Funcionario e) throws Exception {
-        validarFuncionario(e);
-        Funcionario actual = read(e);
-        actual.setNombre(e.getNombre());
-        actual.setTelefono(e.getTelefono());
-        persist();
-    }
-
-    public void delete(Funcionario e) throws Exception {
-        Funcionario actual = read(e);
-        boolean tieneReservas = data.getReservas().stream()
-                .anyMatch(r -> mismoFuncionario(r.getFuncionario(), actual));
-        if (tieneReservas) {
-            throw new Exception("No se puede borrar el funcionario porque tiene reservas asociadas");
-        }
-        data.getFuncionarios().remove(actual);
-        if (actual.getUsuario() != null) {
-            data.getUsuarios().remove(actual.getUsuario());
-        }
-        persist();
-    }
-
-    public List<Funcionario> search(Funcionario filtro) {
-        String id = textoFiltro(filtro == null ? null : filtro.getId());
-        String nombre = textoFiltro(filtro == null ? null : filtro.getNombre());
-        return data.getFuncionarios().stream().filter(i -> id.isEmpty() || i.getId().toLowerCase().contains(id)).filter(i -> nombre.isEmpty() || i.getNombre().toLowerCase().contains(nombre)).sorted(Comparator.comparing(Funcionario::getId)).collect(Collectors.toList());
-    }
-
-    public List<Funcionario> findAllFuncionarios() {
-        return search(new Funcionario());
-    }
-
-    // =========================================================
     // CATEGORIAS
-    // =========================================================
 
-    public void create(Categoria e) throws Exception {
-        validarCategoria(e, false);
-        if (e.getId() == null || e.getId().trim().isEmpty()) {
-            e.setId(siguienteIdCategoria());
+    public void create(Categoria e) throws Exception { categoriaDao.create(e); }
+    public Categoria read(Categoria e) throws Exception { return categoriaDao.read(e.getId()); }
+    public void update(Categoria e) throws Exception { categoriaDao.update(e); }
+    public void delete(Categoria e) throws Exception { categoriaDao.delete(e.getId()); }
+
+    public List<Categoria> search(Categoria e) {
+        try {
+            return categoriaDao.search(e.getDescripcion());
+        } catch (Exception ex) {
+            throw new IllegalStateException("Error buscando categorías", ex);
         }
-        if (existeCategoria(e.getId())) {
-            throw new Exception("Categoría ya existe");
-        }
-        data.getCategorias().add(e);
-        persist();
     }
 
-    public Categoria read(Categoria e) throws Exception {
-        validarTexto(e == null ? null : e.getId(), "Id de categoría");
-        Categoria result = data.getCategorias().stream().filter(i -> i.getId().equals(e.getId())).findFirst().orElse(null);
-        if (result != null) {
-            return result;
-        }
-        throw new Exception("Categoría no existe");
-    }
+    public List<Categoria> findAllCategorias() { return search(new Categoria()); }
 
-    public void update(Categoria e) throws Exception {
-        validarCategoria(e, true);
-        Categoria actual = read(e);
-        actual.setDescripcion(e.getDescripcion());
-        persist();
-    }
-
-    public void delete(Categoria e) throws Exception {
-        Categoria actual = read(e);
-        boolean estaEnReservas = data.getReservas().stream().anyMatch(r -> contieneCategoria(r.getCategorias(), actual));
-        if (estaEnReservas) {
-            throw new Exception("No se puede borrar la categoría porque aparece en reservas");
-        }
-        boolean tieneRecursos = data.getRecursos().stream().anyMatch(r -> mismaCategoria(r.getCategoria(), actual));
-        if (tieneRecursos) {
-            throw new Exception("No se puede borrar la categoría porque tiene recursos asociados");
-        }
-        data.getCategorias().remove(actual);
-        persist();
-    }
-
-    public List<Categoria> search(Categoria filtro) {
-        String descripcion = textoFiltro(filtro == null ? null : filtro.getDescripcion());
-        return data.getCategorias().stream().filter(i -> descripcion.isEmpty() || i.getDescripcion().toLowerCase().contains(descripcion)).sorted(Comparator.comparing(Categoria::getDescripcion)).collect(Collectors.toList());
-    }
-
-    public List<Categoria> findAllCategorias() {
-        return search(new Categoria());
-    }
-
-    // =========================================================
     // RECURSOS
-    // =========================================================
 
-    public void create(Recurso e) throws Exception {
-        validarRecurso(e);
-        if (existeRecurso(e.getId())) {
-            throw new Exception("Recurso ya existe");
+    public void create(Recurso e) throws Exception { recursoDao.create(e); }
+    public Recurso read(Recurso e) throws Exception { return recursoDao.read(e.getId()); }
+    public void update(Recurso e) throws Exception { recursoDao.update(e); }
+    public void delete(Recurso e) throws Exception { recursoDao.delete(e.getId()); }
+
+    public List<Recurso> search(Recurso e) {
+        try {
+            String categoriaId = e.getCategoria() == null ? "" : e.getCategoria().getId();
+            return recursoDao.search(e.getId(), e.getDescripcion(), categoriaId);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Error buscando recursos", ex);
         }
-        e.setCategoria(read(e.getCategoria()));
-        data.getRecursos().add(e);
-        persist();
     }
 
-    public Recurso read(Recurso e) throws Exception {
-        validarTexto(e == null ? null : e.getId(), "Id de recurso");
-        Recurso result = data.getRecursos().stream().filter(i -> i.getId().equals(e.getId())).findFirst().orElse(null);
-        if (result != null) {
-            return result;
-        }
-        throw new Exception("Recurso no existe");
-    }
+    public List<Recurso> findAllRecursos() { return search(new Recurso()); }
 
-    public void update(Recurso e) throws Exception {
-        validarRecurso(e);
-        Recurso actual = read(e);
-        actual.setCategoria(read(e.getCategoria()));
-        actual.setDescripcion(e.getDescripcion());
-        persist();
-    }
-
-    public void delete(Recurso e) throws Exception {
-        Recurso actual = read(e);
-        boolean estaEnReservas = data.getReservas().stream()
-                .anyMatch(r -> contieneRecurso(r.getRecursos(), actual));
-        if (estaEnReservas) {
-            throw new Exception("No se puede borrar el recurso porque aparece en reservas");
-        }
-        data.getRecursos().remove(actual);
-        persist();
-    }
-
-    public List<Recurso> search(Recurso filtro) {
-        String id = textoFiltro(filtro == null ? null : filtro.getId());
-        String descripcion = textoFiltro(filtro == null ? null : filtro.getDescripcion());
-        String categoriaId = filtro != null && filtro.getCategoria() != null ? textoFiltro(filtro.getCategoria().getId()) : "";
-
-        return data.getRecursos().stream()
-                .filter(i -> id.isEmpty() || i.getId().toLowerCase().contains(id))
-                .filter(i -> descripcion.isEmpty() || i.getDescripcion().toLowerCase().contains(descripcion))
-                .filter(i -> categoriaId.isEmpty() ||
-                        (i.getCategoria() != null && i.getCategoria().getId().toLowerCase().equals(categoriaId)))
-                .sorted(Comparator.comparing(Recurso::getId))
-                .collect(Collectors.toList());
-    }
-
-    public List<Recurso> findAllRecursos() {
-        return search(new Recurso());
-    }
-
-    // =========================================================
     // RESERVAS
-    // =========================================================
 
     public void create(Reserva e) throws Exception {
         validarReserva(e);
-        if (e.getId() != null && !e.getId().trim().isEmpty() && existeReserva(e.getId())) {
-            throw new Exception("Reserva ya existe");
-        }
-        Funcionario funcionario = read(e.getFuncionario());
-        List<Categoria> categorias = categoriasCanonicas(e.getCategorias());
-        List<Recurso> asignados = new ArrayList<>();
-        List<String> noDisponibles = new ArrayList<>();
-        for (Categoria categoria : categorias) {
-            Recurso disponible = primerRecursoDisponible(categoria, e.getFecha(), e.getHoraInicio(), e.getHoraFin());
+        try (Connection cnx = Database.instance().getConnection()) {
+            cnx.setAutoCommit(false);
+            try {
+                List<Categoria> categorias = e.getCategorias().stream()
+                        .sorted(Comparator.comparing(Categoria::getId)).toList();
+                Set<String> ids = new HashSet<>();
+                List<Recurso> asignados = new ArrayList<>();
+                List<Categoria> seleccionadas = new ArrayList<>();
+                List<String> faltantes = new ArrayList<>();
 
-            if (disponible == null) {
-                noDisponibles.add(categoria.getDescripcion());
-            } else {
-                asignados.add(disponible);
+                for (Categoria categoria : categorias) {
+                    if (!ids.add(categoria.getId())) continue;
+                    seleccionadas.add(categoria);
+                    Recurso recurso = reservaDao.seleccionarRecursoDisponible(
+                            categoria.getId(), e.getFecha(), e.getHoraInicio(), e.getHoraFin(), cnx);
+                    if (recurso == null) faltantes.add(categoria.getDescripcion());
+                    else asignados.add(recurso);
+                }
+                if (!faltantes.isEmpty()) {
+                    throw new Exception("No hay disponibilidad para: " + String.join(", ", faltantes));
+                }
+
+                // Asignar los recursos solamente después de comprobar todas las categorías.
+                e.setCategorias(seleccionadas);
+                e.setRecursos(asignados);
+                e.setEstado("ACTIVA");
+                reservaDao.create(e, cnx);
+                cnx.commit();
+            } catch (Exception ex) {
+                cnx.rollback();
+                throw ex;
             }
         }
-
-        if (!noDisponibles.isEmpty()) {
-            throw new Exception("No hay disponibilidad para: " + String.join(", ", noDisponibles));
-        }
-
-        if (e.getId() == null || e.getId().trim().isEmpty()) {
-            e.setId(siguienteIdReserva());
-        }
-        e.setFuncionario(funcionario);
-        e.setCategorias(categorias);
-        e.setRecursos(asignados);
-        e.setEstado("ACTIVA");
-        data.getReservas().add(e);
-        persist();
     }
 
-    public Reserva read(Reserva e) throws Exception {
-        validarTexto(e == null ? null : e.getId(), "Id de reserva");
-        Reserva result = data.getReservas().stream().filter(i -> i.getId().equals(e.getId())).findFirst().orElse(null);
-        if (result != null) {
-            return result;
-        }
-        throw new Exception("Reserva no existe");
-    }
+    public Reserva read(Reserva e) throws Exception { return reservaDao.read(e.getId()); }
 
     public void cancel(Reserva e) throws Exception {
-        Reserva actual = read(e);
-        if (!esActiva(actual)) {
-            throw new Exception("La reserva ya está cancelada");
-        }
-        if (!esFutura(actual)) {
+        Reserva actual = reservaDao.read(e.getId());
+        if (!"ACTIVA".equals(actual.getEstado())) throw new Exception("La reserva ya está cancelada");
+        if (!actual.getFecha().isAfter(LocalDate.now()) &&
+                !(actual.getFecha().isEqual(LocalDate.now()) &&
+                  actual.getHoraInicio().isAfter(LocalTime.now()))) {
             throw new Exception("Solo se pueden cancelar reservas futuras");
         }
-        actual.setEstado("CANCELADA");
-        actual.getRecursos().clear();
-        persist();
+        reservaDao.cancel(e.getId());
+        e.setEstado("CANCELADA");
     }
 
     public List<Reserva> findReservas(Funcionario funcionario) throws Exception {
-        Funcionario actual = read(funcionario);
-        return data.getReservas().stream()
-                .filter(r -> mismoFuncionario(r.getFuncionario(), actual))
-                .sorted(Comparator.comparing(Reserva::getFecha)
-                        .thenComparing(Reserva::getHoraInicio))
-                .collect(Collectors.toList());
+        return reservaDao.findByFuncionario(funcionario.getId());
     }
 
     public List<Reserva> findAllReservas() {
-        return data.getReservas().stream()
-                .sorted(Comparator.comparing(Reserva::getFecha)
-                        .thenComparing(Reserva::getHoraInicio))
-                .collect(Collectors.toList());
+        try {
+            return reservaDao.findAll();
+        } catch (Exception ex) {
+            throw new IllegalStateException("Error consultando reservas", ex);
+        }
     }
 
-    // =========================================================
-    // CALENDARIZACION DE RECURSOS
-    // =========================================================
+    // CALENDARIZACION Y ACTIVIDADES
 
     public List<Reserva> calendarizacionRecursos(LocalDate fecha, Categoria categoria) throws Exception {
-        if (fecha == null) {
-            throw new Exception("Fecha requerida");
-        }
-        Categoria actual = read(categoria);
-        return data.getReservas().stream()
-                .filter(this::esActiva)
-                .filter(r -> fecha.equals(r.getFecha()))
+        return reservaDao.findActivasEnPeriodo(fecha, fecha).stream()
                 .filter(r -> r.getRecursos().stream()
-                        .anyMatch(rec -> mismaCategoria(rec.getCategoria(), actual)))
-                .sorted(Comparator.comparing(Reserva::getHoraInicio))
-                .collect(Collectors.toList());
+                        .anyMatch(rec -> rec.getCategoria().getId().equals(categoria.getId())))
+                .toList();
     }
 
     public Reserva reservaEn(Recurso recurso, LocalDate fecha, LocalTime hora) throws Exception {
-        Recurso actual = read(recurso);
-        if (fecha == null || hora == null) {
-            throw new Exception("Fecha y hora requeridas");
-        }
-        LocalTime horaFinBloque = hora.plusHours(1);
-        return data.getReservas().stream()
-                .filter(this::esActiva)
-                .filter(r -> fecha.equals(r.getFecha()))
-                .filter(r -> contieneRecurso(r.getRecursos(), actual))
-                .filter(r -> seTraslapan(hora, horaFinBloque, r.getHoraInicio(), r.getHoraFin()))
-                .findFirst()
-                .orElse(null);
+        return reservaDao.findActivasEnPeriodo(fecha, fecha).stream()
+                .filter(r -> r.getRecursos().stream().anyMatch(rec -> rec.getId().equals(recurso.getId())))
+                .filter(r -> seTraslapan(hora, hora.plusHours(1), r.getHoraInicio(), r.getHoraFin()))
+                .findFirst().orElse(null);
     }
 
-    // =========================================================
-    // PROGRAMACION DE ACTIVIDADES
-    // =========================================================
-
-    public LocalDate inicioSemana(LocalDate fechaReferencia) throws Exception {
-        if (fechaReferencia == null) {
-            throw new Exception("Fecha requerida");
-        }
-        return fechaReferencia.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+    public LocalDate inicioSemana(LocalDate fecha) {
+        return fecha.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
     }
 
-    public List<Reserva> actividadesSemana(LocalDate fechaReferencia) throws Exception {
-        LocalDate desde = inicioSemana(fechaReferencia);
-        LocalDate hasta = desde.plusDays(6);
-        return reservasActivasEnPeriodo(desde, hasta);
+    public List<Reserva> actividadesSemana(LocalDate fecha) throws Exception {
+        LocalDate lunes = inicioSemana(fecha);
+        return reservaDao.findActivasEnPeriodo(lunes, lunes.plusDays(6));
     }
 
     public List<Reserva> actividadesEn(LocalDate fecha, LocalTime hora) throws Exception {
-        if (fecha == null || hora == null) {
-            throw new Exception("Fecha y hora requeridas");
-        }
-        LocalTime horaFinBloque = hora.plusHours(1);
-        return data.getReservas().stream()
-                .filter(this::esActiva)
-                .filter(r -> fecha.equals(r.getFecha()))
-                .filter(r -> seTraslapan(hora, horaFinBloque, r.getHoraInicio(), r.getHoraFin()))
-                .sorted(Comparator.comparing(Reserva::getActividad))
-                .collect(Collectors.toList());
+        return reservaDao.findActivasEnPeriodo(fecha, fecha).stream()
+                .filter(r -> seTraslapan(hora, hora.plusHours(1), r.getHoraInicio(), r.getHoraFin()))
+                .sorted(Comparator.comparing(Reserva::getActividad)).toList();
     }
 
-    // =========================================================
+    static boolean seTraslapan(LocalTime inicio1, LocalTime fin1, LocalTime inicio2, LocalTime fin2) {
+        return inicio1.isBefore(fin2) && fin1.isAfter(inicio2);
+    }
+
     // ESTADISTICAS
-    // =========================================================
 
     public Map<String, Integer> estadisticasRecursos(LocalDate desde, LocalDate hasta) throws Exception {
         validarPeriodo(desde, hasta);
-        Map<String, Integer> result = new LinkedHashMap<>();
-        for (Reserva reserva : reservasActivasEnPeriodo(desde, hasta)) {
+        Map<String, Integer> resultado = new LinkedHashMap<>();
+        for (Reserva reserva : reservaDao.findActivasEnPeriodo(desde, hasta)) {
             for (Recurso recurso : reserva.getRecursos()) {
-                if (recurso.getCategoria() != null) {
-                    String categoria = recurso.getCategoria().getDescripcion();
-                    result.put(categoria, result.getOrDefault(categoria, 0) + 1);
-                }
+                String categoria = recurso.getCategoria().getDescripcion();
+                resultado.merge(categoria, 1, Integer::sum);
             }
         }
-        return result;
+        return resultado;
     }
 
     public Map<LocalDate, Integer> estadisticasActividades(LocalDate desde, LocalDate hasta) throws Exception {
         validarPeriodo(desde, hasta);
-        Map<LocalDate, Integer> result = new LinkedHashMap<>();
-        LocalDate primeraSemana = inicioSemana(desde);
-        LocalDate ultimaSemana = inicioSemana(hasta);
-        for (LocalDate semana = primeraSemana; !semana.isAfter(ultimaSemana); semana = semana.plusWeeks(1)) {
-            result.put(semana, 0);
+        Map<LocalDate, Integer> resultado = new LinkedHashMap<>();
+        for (LocalDate semana = inicioSemana(desde); !semana.isAfter(hasta); semana = semana.plusWeeks(1)) {
+            resultado.put(semana, 0);
         }
-        for (Reserva reserva : reservasActivasEnPeriodo(desde, hasta)) {
+        for (Reserva reserva : reservaDao.findActivasEnPeriodo(desde, hasta)) {
             LocalDate semana = inicioSemana(reserva.getFecha());
-            result.put(semana, result.getOrDefault(semana, 0) + 1);
+            resultado.merge(semana, 1, Integer::sum);
         }
-        return result;
-    }
-
-    // =========================================================
-    // AUXILIARES PRIVADOS
-    // =========================================================
-
-    private List<Reserva> reservasActivasEnPeriodo(LocalDate desde, LocalDate hasta) throws Exception {
-        validarPeriodo(desde, hasta);
-        return data.getReservas().stream()
-                .filter(this::esActiva)
-                .filter(r -> !r.getFecha().isBefore(desde) && !r.getFecha().isAfter(hasta))
-                .sorted(Comparator.comparing(Reserva::getFecha)
-                        .thenComparing(Reserva::getHoraInicio))
-                .collect(Collectors.toList());
-    }
-
-    private Recurso primerRecursoDisponible(Categoria categoria, LocalDate fecha,
-                                            LocalTime inicio, LocalTime fin) {
-        return data.getRecursos().stream()
-                .filter(r -> mismaCategoria(r.getCategoria(), categoria))
-                .sorted(Comparator.comparing(Recurso::getId))
-                .filter(r -> recursoDisponible(r, fecha, inicio, fin))
-                .findFirst()
-                .orElse(null);
-    }
-
-    private boolean recursoDisponible(Recurso recurso, LocalDate fecha,
-                                      LocalTime inicio, LocalTime fin) {
-        return data.getReservas().stream()
-                .filter(this::esActiva)
-                .filter(r -> fecha.equals(r.getFecha()))
-                .filter(r -> contieneRecurso(r.getRecursos(), recurso))
-                .noneMatch(r -> seTraslapan(inicio, fin, r.getHoraInicio(), r.getHoraFin()));
-    }
-
-    private boolean seTraslapan(LocalTime inicio1, LocalTime fin1,
-                                LocalTime inicio2, LocalTime fin2) {
-        return inicio1.isBefore(fin2) && fin1.isAfter(inicio2);
-    }
-
-    private boolean esActiva(Reserva reserva) {
-        return reserva != null && "ACTIVA".equalsIgnoreCase(reserva.getEstado());
-    }
-
-    private boolean esFutura(Reserva reserva) {
-        LocalDate hoy = LocalDate.now();
-        LocalTime ahora = LocalTime.now();
-
-        return reserva.getFecha().isAfter(hoy)
-                || (reserva.getFecha().equals(hoy) && reserva.getHoraInicio().isAfter(ahora));
-    }
-
-    private List<Categoria> categoriasCanonicas(List<Categoria> categorias) throws Exception {
-        List<Categoria> result = new ArrayList<>();
-        for (Categoria categoria : categorias) {
-            Categoria actual = read(categoria);
-            if (!contieneCategoria(result, actual)) {
-                result.add(actual);
-            }
-        }
-        return result;
-    }
-
-    private boolean existeUsuario(String id) {
-        return data.getUsuarios().stream().anyMatch(i -> i.getId().equals(id));
-    }
-
-    private boolean existeFuncionario(String id) {
-        return data.getFuncionarios().stream().anyMatch(i -> i.getId().equals(id));
-    }
-
-    private boolean existeCategoria(String id) {
-        return data.getCategorias().stream().anyMatch(i -> i.getId().equals(id));
-    }
-
-    private boolean existeRecurso(String id) {
-        return data.getRecursos().stream().anyMatch(i -> i.getId().equals(id));
-    }
-
-    private boolean existeReserva(String id) {
-        return data.getReservas().stream().anyMatch(i -> i.getId().equals(id));
-    }
-
-    private boolean mismoFuncionario(Funcionario a, Funcionario b) {
-        return a != null && b != null && a.getId() != null && a.getId().equals(b.getId());
-    }
-
-    private boolean mismaCategoria(Categoria a, Categoria b) {
-        return a != null && b != null && a.getId() != null && a.getId().equals(b.getId());
-    }
-
-    private boolean mismoRecurso(Recurso a, Recurso b) {
-        return a != null && b != null && a.getId() != null && a.getId().equals(b.getId());
-    }
-
-    private boolean contieneCategoria(List<Categoria> categorias, Categoria buscada) {
-        return categorias != null && categorias.stream().anyMatch(c -> mismaCategoria(c, buscada));
-    }
-
-    private boolean contieneRecurso(List<Recurso> recursos, Recurso buscado) {
-        return recursos != null && recursos.stream().anyMatch(r -> mismoRecurso(r, buscado));
-    }
-
-    private String siguienteIdCategoria() {
-        int max = data.getCategorias().stream()
-                .mapToInt(c -> numeroId(c.getId()))
-                .max()
-                .orElse(0);
-        return String.format("CAT-%07d", max + 1);
-    }
-
-    private String siguienteIdRecurso() {
-        int max = data.getRecursos().stream()
-                .mapToInt(r -> numeroId(r.getId()))
-                .max()
-                .orElse(0);
-        return String.format("REC-%07d", max + 1);
-    }
-
-    private String siguienteIdReserva() {
-        int max = data.getReservas().stream()
-                .mapToInt(r -> numeroId(r.getId()))
-                .max()
-                .orElse(0);
-        return String.format("RES-%07d", max + 1);
-    }
-
-    private int numeroId(String id) {
-        if (id == null) return 0;
-        String numeros = id.replaceAll("\\D", "");
-        if (numeros.isEmpty()) return 0;
-        try {
-            return Integer.parseInt(numeros);
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
-    private void validarFuncionario(Funcionario e) throws Exception {
-        if (e == null) throw new Exception("Funcionario requerido");
-        validarTexto(e.getId(), "Id");
-        validarTexto(e.getNombre(), "Nombre");
-        validarTexto(e.getTelefono(), "Teléfono");
-    }
-
-    private void validarCategoria(Categoria e, boolean requiereId) throws Exception {
-        if (e == null) throw new Exception("Categoría requerida");
-        if (requiereId) validarTexto(e.getId(), "Id");
-        validarTexto(e.getDescripcion(), "Descripción");
-    }
-
-    private void validarRecurso(Recurso e) throws Exception {
-        if (e == null) throw new Exception("Recurso requerido");
-        validarTexto(e.getId(), "Id de recurso");
-        validarTexto(e.getDescripcion(), "Descripción");
-        if (e.getCategoria() == null) throw new Exception("Categoría requerida");
-        validarTexto(e.getCategoria().getId(), "Categoría");
-    }
-
-    private void validarReserva(Reserva e) throws Exception {
-        if (e == null) throw new Exception("Reserva requerida");
-        if (e.getFuncionario() == null) throw new Exception("Funcionario requerido");
-        validarTexto(e.getFuncionario().getId(), "Funcionario");
-        validarTexto(e.getActividad(), "Actividad");
-        if (e.getFecha() == null) throw new Exception("Fecha requerida");
-        if (e.getHoraInicio() == null) throw new Exception("Hora de inicio requerida");
-        if (e.getHoraFin() == null) throw new Exception("Hora de finalización requerida");
-        if (!e.getHoraInicio().isBefore(e.getHoraFin())) {
-            throw new Exception("La hora de inicio debe ser anterior a la hora de finalización");
-        }
-        if (e.getCategorias() == null || e.getCategorias().isEmpty()) {
-            throw new Exception("Debe seleccionar al menos una categoría");
-        }
+        return resultado;
     }
 
     private void validarPeriodo(LocalDate desde, LocalDate hasta) throws Exception {
-        if (desde == null || hasta == null) {
-            throw new Exception("Las fechas desde y hasta son requeridas");
-        }
-        if (desde.isAfter(hasta)) {
-            throw new Exception("La fecha desde no puede ser posterior a la fecha hasta");
+        if (desde == null || hasta == null || desde.isAfter(hasta)) {
+            throw new Exception("Periodo de fechas inválido");
         }
     }
 
-    private void validarTexto(String valor, String campo) throws Exception {
-        if (valor == null || valor.trim().isEmpty()) {
-            throw new Exception(campo + " requerido");
+    private void validarReserva(Reserva e) throws Exception {
+        if (e == null || e.getFuncionario() == null || e.getFuncionario().getId() == null ||
+                e.getActividad() == null || e.getActividad().isBlank() ||
+                e.getFecha() == null || e.getHoraInicio() == null || e.getHoraFin() == null ||
+                !e.getHoraInicio().isBefore(e.getHoraFin()) ||
+                e.getCategorias() == null || e.getCategorias().isEmpty()) {
+            throw new Exception("Datos de reserva incompletos o incorrectos");
         }
     }
 
-    private String textoFiltro(String valor) {
-        return valor == null ? "" : valor.trim().toLowerCase();
-    }
+    // EXTRACCION CON IA
 
-    //Metodo principal de extrarer los datos con ia
     public ReservaIA extractIA(String frase) throws Exception {
-        if (frase == null || frase.isBlank()) {
-            throw new Exception("Debe escribir una descripción de la reserva");
-        }
-        OpenAiChatModel aiModel = OpenAiChatModel.builder().baseUrl("http://langchain4j.dev/demo/openai/v1").apiKey("demo").modelName("gpt-4o-mini").build();
-        ReservaExtractorService aiService = AiServices.create(ReservaExtractorService.class, aiModel);
-        String categoriasDisponibles = data.getCategorias().stream().map(Categoria::getDescripcion).collect(Collectors.joining("\n"));
-        ReservaExtraccion respuesta = aiService.extraer(frase, categoriasDisponibles, LocalDate.now().toString());
+        if (frase == null || frase.isBlank()) throw new Exception("Debe escribir una descripción de la reserva");
 
-        //convertir lo que nos da la ia a un recurso que se pueda entender
-        LocalDate fecha = null;
-        LocalTime inicio = null;
-        LocalTime fin = null;
-        if (respuesta.getFecha() != null) {
-            fecha = LocalDate.parse(respuesta.getFecha());
-        }
-        if (respuesta.getHoraInicio() != null) {
-            inicio = LocalTime.parse(respuesta.getHoraInicio());
-        }
-        if (respuesta.getHoraFinal() != null) {
-            fin = LocalTime.parse(respuesta.getHoraFinal());
-        }
-        List<String> categorias = respuesta.getCategoriasRecurso() == null ? new ArrayList<>() : respuesta.getCategoriasRecurso();
-        return new ReservaIA(respuesta.getActividad(), fecha, inicio, fin, categorias);
+        OpenAiChatModel modelo = OpenAiChatModel.builder()
+                .baseUrl("http://langchain4j.dev/demo/openai/v1")
+                .apiKey("demo").modelName("gpt-4o-mini").build();
+        ReservaExtractorService extractor = AiServices.create(ReservaExtractorService.class, modelo);
+        String categorias = findAllCategorias().stream()
+                .map(Categoria::getDescripcion).collect(Collectors.joining("\n"));
+        ReservaExtraccion respuesta = extractor.extraer(frase, categorias, LocalDate.now().toString());
+
+        return new ReservaIA(
+                respuesta.getActividad(),
+                respuesta.getFecha() == null ? null : LocalDate.parse(respuesta.getFecha()),
+                respuesta.getHoraInicio() == null ? null : LocalTime.parse(respuesta.getHoraInicio()),
+                respuesta.getHoraFinal() == null ? null : LocalTime.parse(respuesta.getHoraFinal()),
+                respuesta.getCategoriasRecurso() == null ? new ArrayList<>() : respuesta.getCategoriasRecurso());
     }
+
     public Categoria findCategoriaByDescripcion(String descripcion) {
-        return data.getCategorias().stream()
+        return findAllCategorias().stream()
                 .filter(c -> c.getDescripcion().equalsIgnoreCase(descripcion))
-                .findFirst()
-                .orElse(null);
+                .findFirst().orElse(null);
     }
 }

@@ -1,6 +1,5 @@
 package reservas.presentation;
 
-import reservas.logic.Service;
 import reservas.logic.Usuario;
 
 public class Sesion {
@@ -11,7 +10,6 @@ public class Sesion {
     public static void setUsuario(Usuario usuario) {Sesion.usuario = usuario;}
 
     public static void logout() {
-        Service.instance().stop();
         Sesion.usuario = null;
     }
     public static boolean isLoggedIn() {return usuario != null;}

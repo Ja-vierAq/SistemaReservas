@@ -1,27 +1,15 @@
 package reservas.logic;
 
-import jakarta.xml.bind.annotation.XmlAccessType;
-import jakarta.xml.bind.annotation.XmlAccessorType;
-import jakarta.xml.bind.annotation.XmlElement;
-import jakarta.xml.bind.annotation.XmlElementWrapper;
-import jakarta.xml.bind.annotation.XmlID;
-import jakarta.xml.bind.annotation.XmlIDREF;
-import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
-import reservas.data.LocalDateAdapter;
-import reservas.data.LocalTimeAdapter;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@XmlAccessorType(XmlAccessType.FIELD)
 public class Reserva {
 
     // atributos q se piden segun el enunciado
 
-    @XmlID
     private String id;
-    @XmlIDREF
     private Funcionario funcionario;
     private String actividad;
     private String estado;
@@ -29,21 +17,12 @@ public class Reserva {
     // los atributos de fechas estan en LocalDate/time
     // para hacer mas facil futuras comparaciones
 
-    @XmlJavaTypeAdapter(LocalDateAdapter.class)
     private LocalDate fecha;
-    @XmlJavaTypeAdapter(LocalTimeAdapter.class)
     private LocalTime horaInicio;
-    @XmlJavaTypeAdapter(LocalTimeAdapter.class)
     private LocalTime horaFin;
     // la categoria es lo que se solicitó al hacer la reserva
     // mientras que recurso es lo que el programa asigna oficialmente
-    @XmlElementWrapper(name = "categorias")
-    @XmlElement(name = "categoria")
-    @XmlIDREF
     private List<Categoria> categorias;
-    @XmlElementWrapper(name = "recursos")
-    @XmlElement(name = "recurso")
-    @XmlIDREF
     private List<Recurso> recursos;
 
     public Reserva() {

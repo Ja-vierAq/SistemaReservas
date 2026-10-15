@@ -1,11 +1,8 @@
 package reservas;
 
-import reservas.logic.Service;
 import reservas.presentation.Sesion;
 
 import javax.swing.*;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 
 public class Application {
     public static void main(String[] args) {
@@ -20,8 +17,6 @@ public class Application {
     }
 
     private static void doLogin() {
-        try {UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");}
-        catch (Exception ex) {}
         reservas.presentation.login.View view = new reservas.presentation.login.View();
         reservas.presentation.login.Model model = new reservas.presentation.login.Model();
         new reservas.presentation.login.Controller(view, model);
@@ -29,8 +24,6 @@ public class Application {
     }
 
     private static void doRun() {
-        try {UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");}
-        catch (Exception ex) {}
         JFrame window = new JFrame();
         window.setTitle(
                 "Sistema de Reservas - "
@@ -40,14 +33,6 @@ public class Application {
                         + ")"
         );
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        // Igual que en el ejemplo del profesor: persistir los datos al cerrar.
-        window.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                Service.instance().stop();
-            }
-        });
 
         JTabbedPane tabbedPane = new JTabbedPane();
         window.setContentPane(tabbedPane);
