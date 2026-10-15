@@ -20,6 +20,8 @@ public class Application {
     }
 
     private static void doLogin() {
+        try {UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");}
+        catch (Exception ex) {}
         reservas.presentation.login.View view = new reservas.presentation.login.View();
         reservas.presentation.login.Model model = new reservas.presentation.login.Model();
         new reservas.presentation.login.Controller(view, model);
@@ -27,6 +29,8 @@ public class Application {
     }
 
     private static void doRun() {
+        try {UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");}
+        catch (Exception ex) {}
         JFrame window = new JFrame();
         window.setTitle(
                 "Sistema de Reservas - "
