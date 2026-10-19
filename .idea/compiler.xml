@@ -11,11 +11,8 @@
         <outputRelativeToContentRoot value="true" />
         <module name="Protocol" />
         <module name="SistemaReservas" />
+        <module name="Backend" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="Backend" target="22" />
-      <module name="Protocol" target="22" />
-    </bytecodeTargetLevel>
   </component>
 </project>
