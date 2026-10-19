@@ -9,8 +9,13 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <module name="Protocol" />
         <module name="SistemaReservas" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="Backend" target="22" />
+      <module name="Protocol" target="22" />
+    </bytecodeTargetLevel>
   </component>
 </project>
