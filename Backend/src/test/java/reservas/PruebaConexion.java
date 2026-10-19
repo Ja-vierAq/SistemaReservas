@@ -24,6 +24,25 @@ public class PruebaConexion {
             } else {
                 System.err.println("Error del servidor: " + resultado);
             }
+            salida.writeInt(Protocol.FUNCIONARIO_FIND_ALL);
+            salida.writeObject(new Object[0]);
+            salida.flush();
+            int estadoFuncionarios = entrada.readInt();
+            Object funcionarios = entrada.readObject();
+            if (estadoFuncionarios == Protocol.ERROR_NO_ERROR) {
+                System.out.println("Funcionarios recibidos: " + ((List<?>) funcionarios).size());
+            }
+            else System.err.println("Error: " + funcionarios);
+            salida.writeInt(Protocol.RECURSO_FIND_ALL);
+            salida.writeObject(new Object[0]);
+            salida.flush();
+            int estadoRecursos = entrada.readInt();
+            Object recursos = entrada.readObject();
+            if (estadoRecursos == Protocol.ERROR_NO_ERROR) {
+                System.out.println("Recursos recibidos: " + ((List<?>) recursos).size());
+            }
+            else System.err.println("Error: " + recursos);
+
             salida.writeInt(Protocol.DISCONNECT);
             salida.flush();
         }
