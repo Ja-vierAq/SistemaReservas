@@ -1,0 +1,25 @@
+package reservas.logic;
+import java.io.Serializable;
+public class Usuario implements Serializable {
+    private String id;
+    private String clave;
+    private String rol;
+
+    public Usuario(){}
+    public Usuario(String id, String clave,String rol){
+        this.id=id;
+        this.clave=clave;
+        this.rol=rol;
+    }
+
+    public String getId() {return id;}
+    public void setId(String id) {this.id = id;}
+
+    public String getClave() {return clave;}
+    public void setClave(String clave) {this.clave = clave;}
+
+    public String getRol() {return rol;}
+    public void setRol(String rol) {this.rol = rol;}
+
+    public String mostrar(){return "ID: "+this.id+", Clave: "+this.clave+", Rol: "+this.rol;}
+}
